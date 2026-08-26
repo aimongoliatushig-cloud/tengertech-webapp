@@ -1325,6 +1325,8 @@ type CachedOdooModelReadAccess = {
 const MUNICIPAL_SNAPSHOT_CACHE_TTL_MS = 2 * 60_000;
 const FLEET_VEHICLE_BOARD_CACHE_TTL_MS = 60_000;
 const DASHBOARD_STALE_CACHE_TTL_MS = 10 * 60_000;
+const MAX_ODOO_READ_RPC_CACHE_ENTRIES = 300;
+const MAX_MUNICIPAL_SNAPSHOT_CACHE_ENTRIES = 40;
 const municipalSnapshotCache = new Map<string, CachedMunicipalSnapshot>();
 const fleetVehicleBoardCache = new Map<string, CachedFleetVehicleBoard>();
 const municipalSnapshotPendingCache = new Map<
@@ -1346,6 +1348,21 @@ const hrDailyAttendanceSummaryPendingCache = new Map<
   Promise<HrDailyAttendanceSummary>
 >();
 const odooModelReadAccessCache = new Map<string, CachedOdooModelReadAccess>();
+
+function pruneExpiringCache<T extends { expiresAt: number }>(
+  cache: Map<string, T>,
+  maxEntries: number,
+) {
+  const now = Date.now();
+  for (const [key, entry] of cache) {
+    if (entry.expiresAt <= now) cache.delete(key);
+  }
+  while (cache.size >= maxEntries) {
+    const oldestKey = cache.keys().next().value;
+    if (typeof oldestKey !== "string") break;
+    cache.delete(oldestKey);
+  }
+}
 
 export function createOdooConnection(
   overrides: Partial<OdooConnection> = {},
@@ -1557,6 +1574,7 @@ function writeCachedMunicipalSnapshot(
   connection: OdooConnection,
   value: DashboardSnapshot,
 ) {
+  pruneExpiringCache(municipalSnapshotCache, MAX_MUNICIPAL_SNAPSHOT_CACHE_ENTRIES);
   municipalSnapshotCache.set(getMunicipalSnapshotCacheKey(connection), {
     value,
     expiresAt: Date.now() + MUNICIPAL_SNAPSHOT_CACHE_TTL_MS,
@@ -4150,6 +4168,7 @@ async function executeKw<T>(
   )
     .then((result) => {
       if (cacheKey) {
+        pruneExpiringCache(odooReadRpcCache, MAX_ODOO_READ_RPC_CACHE_ENTRIES);
         odooReadRpcCache.set(cacheKey, {
           value: result,
           expiresAt: Date.now() + ODOO_READ_RPC_CACHE_TTL_MS,
@@ -6422,7 +6441,7 @@ async function fetchLiveSnapshot(
   }
   const { uid, connection: resolvedConnection } = auth;
 
-  const [projects, rawTasks] = await Promise.all([
+  const [projects, rawTasks, reports] = await Promise.all([
     searchReadAll<OdooProjectRecord>(
       uid,
       "project.project",
@@ -6450,25 +6469,24 @@ async function fetchLiveSnapshot(
       },
       resolvedConnection,
     ),
+    searchReadAllWithFieldFallback<OdooReportRecord>(
+      uid,
+      "ops.task.report",
+      [],
+      REPORT_FIELD_VARIANTS,
+      {
+        order: "report_datetime desc",
+      },
+      resolvedConnection,
+      200,
+    ).catch((error) => {
+      console.warn("ops.task.report мэдээлэл уншихад алдаа гарлаа:", error);
+      return [] as OdooReportRecord[];
+    }),
   ]);
   const tasks = rawTasks.filter(
     (task) => !isRoadCleaningPhotoPlaceholderTaskName(task.name),
   );
-
-  const reports = await searchReadAllWithFieldFallback<OdooReportRecord>(
-    uid,
-    "ops.task.report",
-    [],
-    REPORT_FIELD_VARIANTS,
-    {
-      order: "report_datetime desc",
-    },
-    resolvedConnection,
-    200,
-  ).catch((error) => {
-    console.warn("ops.task.report мэдээлэл уншихад алдаа гарлаа:", error);
-    return [] as OdooReportRecord[];
-  });
 
   const reportsByTaskId = new Map<number, OdooReportRecord[]>();
   for (const report of reports) {
