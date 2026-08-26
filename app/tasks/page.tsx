@@ -628,7 +628,12 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const canCreateFromCalendar = canCreateProject || canCreateTasks;
   const calendarCreateHref = canCreateProject ? "/projects/new" : "/create";
-  const workerMode = isWorkerOnly(session);
+  const baseWorkerMode = isWorkerOnly(session);
+  // Хүний нөөцийн мэргэжилтэн HR цэсээ хадгална, харин Даалгавар
+  // хуудсан дээр өөрт оноосон захирлын ажлуудаа ажилтны тайлангийн
+  // урсгалаар харах шаардлагатай.
+  const hrPersonalTaskMode = session.role === "hr_specialist";
+  const workerMode = baseWorkerMode || hrPersonalTaskMode;
   const masterMode = isMasterRole(session.role);
   const seniorMasterMode = session.role === "senior_master";
   const masterTab = normalizeMasterTab(getParam(params.tab), seniorMasterMode);
@@ -679,7 +684,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 roleLabel={getSessionRoleLabel(session)}
                 groupFlags={session.groupFlags}
                 masterMode={masterMode}
-                workerMode={workerMode}
+                workerMode={baseWorkerMode}
                 notificationCount={0}
               />
             </aside>
@@ -725,7 +730,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
     ? sourceTaskDirectory.filter((task) => task.assigneeIds?.includes(session.uid))
     : [];
   const workerTasks = workerMode
-    ? hasRequestedWorkerWork
+    ? hasRequestedWorkerWork || hrPersonalTaskMode
       ? assignedWorkerTasks
       : filterTasksToDate(assignedWorkerTasks, todayDateKey)
     : [];
@@ -1207,7 +1212,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
-              workerMode={workerMode}
+              workerMode={baseWorkerMode}
               notificationCount={notificationSummary.unreadCount}
               departmentScopeName={scopedDepartmentName}
             />
@@ -1295,7 +1300,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
 
                 <section className={styles.workerWeatherCard} aria-label="Өнөөдрийн богино тойм">
                   <div>
-                    <span>Өнөөдөр</span>
+                    <span>{hrPersonalTaskMode ? "Миний бүх даалгавар" : "Өнөөдөр"}</span>
                     <strong>
                       <Sun size={28} strokeWidth={2.3} aria-hidden="true" />
                       {visibleWorkerTasks.length} даалгавар
@@ -1775,9 +1780,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   <div>
                     <span className={styles.filterKicker}>Ажилчны урсгал</span>
                     <h2>Миний ажлууд</h2>
-                    <p>Өнөөдрийн оноогдсон ажил ба тайлангийн дараалал.</p>
+                  <p>{hrPersonalTaskMode ? "Танд оноосон бүх ажил ба тайлангийн дараалал." : "Өнөөдрийн оноогдсон ажил ба тайлангийн дараалал."}</p>
                   </div>
-                  <div className={styles.workerHeroSummary} aria-label="Ажилтны өнөөдрийн тойм">
+                  <div className={styles.workerHeroSummary} aria-label={hrPersonalTaskMode ? "Ажилтны нийт ажлын тойм" : "Ажилтны өнөөдрийн тойм"}>
                     <span>
                       <strong>{workerWorkGroups.length}</strong>
                       ажил
