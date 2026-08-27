@@ -4593,14 +4593,24 @@ export async function loadTaskDetail(
     primaryConnection.login === fallbackConnection.login &&
     primaryConnection.password === fallbackConnection.password;
 
-  const taskPromise = taskQuery(connectionOverrides).catch((error) => {
-    if (sameConnection) {
-      throw error;
-    }
+  const taskPromise = taskQuery(connectionOverrides)
+    .then(async (tasks) => {
+      // Odoo record rules may hide an assigned task by returning an empty
+      // result instead of raising AccessError. Retry with the service account;
+      // the page then authorizes the record against the signed-in assignee.
+      if (tasks.length || sameConnection) {
+        return tasks;
+      }
+      return taskQuery({});
+    })
+    .catch((error) => {
+      if (sameConnection) {
+        throw error;
+      }
 
-    console.warn("Task detail could not be loaded with user credentials, retrying as system:", error);
-    return taskQuery({});
-  });
+      console.warn("Task detail could not be loaded with user credentials, retrying as system:", error);
+      return taskQuery({});
+    });
 
   const reportQuery = (overrides: Partial<OdooConnection>) =>
     searchReadWithFieldFallback<ReportRecord>(
