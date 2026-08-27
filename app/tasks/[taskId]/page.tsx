@@ -207,7 +207,12 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const composer = getMessage(query.composer);
   const safeReturnTo = returnTo.startsWith("/") ? returnTo : "";
   const openReportComposer = composer === "report";
-  const workerMode = isWorkerOnly(session);
+  const baseWorkerMode = isWorkerOnly(session);
+  // Хүний нөөцийн мэргэжилтэн өөрт оноосон захирлын даалгаврыг
+  // хэлтсийн төслийн scope-оор бус, ажилтны хувийн урсгалаар нээнэ.
+  // Үндсэн HR цэсийг хадгалахын тулд AppMenu-д baseWorkerMode ашиглана.
+  const hrPersonalTaskMode = session.role === "hr_specialist";
+  const workerMode = baseWorkerMode || hrPersonalTaskMode;
   const masterMode = isMasterRole(session.role);
   const scopedDepartmentName = await loadSessionDepartmentName(session);
   const fromCreateFlow = safeReturnTo.startsWith("/create");
@@ -267,7 +272,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 roleLabel={getSessionRoleLabel(session)}
                 groupFlags={session.groupFlags}
                 masterMode={masterMode}
-                workerMode={workerMode}
+                workerMode={baseWorkerMode}
                 departmentScopeName={scopedDepartmentName}
               />
             </aside>
@@ -617,7 +622,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
-              workerMode={workerMode}
+              workerMode={baseWorkerMode}
               departmentScopeName={scopedDepartmentName}
             />
           </aside>
