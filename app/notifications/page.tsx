@@ -6,6 +6,7 @@ import shellStyles from "@/app/workspace.module.css";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
   hasCapability,
+  isHrOnlyRole,
   isMasterRole,
   isWorkerOnly,
   requireSession,
@@ -250,6 +251,7 @@ export default async function NotificationsPage() {
   }
 
   const workerMode = isWorkerOnly(session);
+  const hrPersonalTaskMode = isHrOnlyRole(session);
   const masterMode = isMasterRole(session.role);
   const executiveWorkMode =
     session.role === "director" ||
@@ -362,7 +364,11 @@ export default async function NotificationsPage() {
 
   for (const task of visibleTasks) {
     const item = ensureFromTask(task);
-    if (task.createdDate === todayDateKey && task.statusKey !== "verified") {
+    const isActiveHrAssignment =
+      hrPersonalTaskMode &&
+      isAssignedToCurrentUser(task) &&
+      task.statusKey !== "verified";
+    if (isActiveHrAssignment || (task.createdDate === todayDateKey && task.statusKey !== "verified")) {
       addReason(item, "new");
     }
     if (isOverdue(task, todayDateKey)) {

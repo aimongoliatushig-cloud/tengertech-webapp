@@ -3,7 +3,7 @@ import "server-only";
 import { canAccessProcurementModule } from "@/lib/roles";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { loadProcurementRequests, type ProcurementRequestSummary } from "@/lib/procurement";
-import { type AppSession, isMasterRole, isWorkerOnly } from "@/lib/auth";
+import { type AppSession, isHrOnlyRole, isMasterRole, isWorkerOnly } from "@/lib/auth";
 import type { RoleGroupFlags } from "@/lib/roles";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { loadReadNotificationKeys } from "@/lib/notification-state";
@@ -331,6 +331,7 @@ export function buildWorkspaceNotificationRecords(
 ) {
   const todayDateKey = getTodayDateKey();
   const workerMode = isWorkerOnly(session);
+  const hrPersonalTaskMode = isHrOnlyRole(session);
   const masterMode = isMasterRole(session.role);
   const currentUserId = String(session.uid);
 
@@ -384,7 +385,11 @@ export function buildWorkspaceNotificationRecords(
 
   for (const task of visibleTasks) {
     const item = ensureFromTask(task);
-    if (task.createdDate === todayDateKey && task.statusKey !== "verified") {
+    const isActiveHrAssignment =
+      hrPersonalTaskMode &&
+      isAssignedToUser(task, currentUserId) &&
+      task.statusKey !== "verified";
+    if (isActiveHrAssignment || (task.createdDate === todayDateKey && task.statusKey !== "verified")) {
       addReason(item.reasons, "new");
     }
     if (isOverdue(task, todayDateKey)) {
