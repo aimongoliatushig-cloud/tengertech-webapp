@@ -3642,6 +3642,7 @@ export function TimeoffRequestsClient({
         ? "sick"
         : "time_off";
   const defaultFilter = searchParams.get("state") || searchParams.get("requestType") || ALL;
+  const defaultDepartment = searchParams.get("department") || ALL;
   const defaultEmployeeId = searchParams.get("employeeId") || "";
   const employeeById = useMemo(
     () => new Map(employees.map((employee) => [employee.id, employee])),
@@ -3650,6 +3651,7 @@ export function TimeoffRequestsClient({
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState(defaultFilter);
+  const [departmentFilter, setDepartmentFilter] = useState(defaultDepartment);
   const [editingRequest, setEditingRequest] = useState<HrTimeoffRequest | null>(null);
   const [selectedRequestType, setSelectedRequestType] = useState<HrTimeoffRequestType>(defaultType);
   const [annualLeaveDateFrom, setAnnualLeaveDateFrom] = useState("");
@@ -3657,6 +3659,18 @@ export function TimeoffRequestsClient({
   const [annualLeaveDays, setAnnualLeaveDays] = useState("");
   const requestFormRef = useRef<HTMLFormElement>(null);
   const annualLeaveOnlyMode = mode === "hr" && defaultType === "annual_leave";
+  const departmentOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          requests
+            .filter((request) => request.requestType === "annual_leave")
+            .map((request) => request.departmentName.trim())
+            .filter(Boolean),
+        ),
+      ).sort(compareHrDepartmentNames),
+    [requests],
+  );
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ulaanbaatar",
     year: "numeric",
@@ -3690,9 +3704,13 @@ export function TimeoffRequestsClient({
   }, [editingRequest]);
 
   const visibleRequests = useMemo(() => {
-    const base = allTypesMode
+    const typeFiltered = allTypesMode
       ? requests
       : requests.filter((request) => request.requestType === defaultType);
+    const base =
+      departmentFilter === ALL
+        ? typeFiltered
+        : typeFiltered.filter((request) => request.departmentName === departmentFilter);
     if (filter === ALL) return base;
     if (filter === "pending") {
       return base.filter((request) => request.state === "submitted" || request.state === "hr_review");
@@ -3704,7 +3722,7 @@ export function TimeoffRequestsClient({
       );
     }
     return base.filter((request) => request.state === filter || request.requestType === filter);
-  }, [allTypesMode, defaultType, filter, requests, today]);
+  }, [allTypesMode, defaultType, departmentFilter, filter, requests, today]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3803,6 +3821,20 @@ export function TimeoffRequestsClient({
         </div>
 
         <div className={styles.toolbar}>
+          {annualLeaveOnlyMode ? (
+            <select
+              aria-label="Хэлтсээр шүүх"
+              value={departmentFilter}
+              onChange={(event) => setDepartmentFilter(event.target.value)}
+            >
+              <option value={ALL}>Бүх хэлтэс</option>
+              {departmentOptions.map((departmentName) => (
+                <option key={departmentName} value={departmentName}>
+                  {departmentName}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <select value={filter} onChange={(event) => setFilter(event.target.value)}>
             <option value={ALL}>Бүх төлөв</option>
             <option value="draft">Ноорог</option>
