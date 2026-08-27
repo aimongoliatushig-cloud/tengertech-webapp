@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { requireSession,
   getSessionRoleLabel,
@@ -89,7 +87,11 @@ export default async function HrDashboardPage() {
           </div>
           <div className={styles.assignedTasksList}>
             {assignedTasks.slice(0, 8).map((task) => (
-              <Link key={task.id} href={task.href} className={styles.assignedTaskRow}>
+              <a
+                key={task.id}
+                href={`/tasks/${task.id}?returnTo=%2Fhr&composer=report`}
+                className={styles.assignedTaskRow}
+              >
                 <span className={styles.assignedTaskName}>{task.name}</span>
                 <span className={styles.assignedTaskMeta}>
                   {task.projectName ? <small>{task.projectName}</small> : null}
@@ -105,8 +107,9 @@ export default async function HrDashboardPage() {
                   >
                     {task.statusLabel}
                   </span>
+                  <strong className={styles.assignedTaskOpen}>Нээж тайлан оруулах</strong>
                 </span>
-              </Link>
+              </a>
             ))}
           </div>
           {assignedTasks.length > 8 ? (

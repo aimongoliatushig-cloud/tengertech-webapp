@@ -5559,6 +5559,37 @@
   color: #1f5f31;
 }
 
+.assignedTaskOpen {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #25843b;
+  color: #fff;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .assignedTaskRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .assignedTaskName {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .assignedTaskMeta {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .assignedTaskOpen {
+    margin-left: auto;
+  }
+}
+
 .assignedTasksMore {
   margin: 0;
   color: #64756b;
