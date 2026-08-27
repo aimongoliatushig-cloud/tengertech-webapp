@@ -32,6 +32,7 @@ import {
 import shellStyles from "@/app/workspace.module.css";
 import {
   hasCapability,
+  isHrOnlyRole,
   isMasterRole,
   isWorkerOnly,
   requireSession,
@@ -632,7 +633,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
   // Хүний нөөцийн мэргэжилтэн HR цэсээ хадгална, харин Даалгавар
   // хуудсан дээр өөрт оноосон захирлын ажлуудаа ажилтны тайлангийн
   // урсгалаар харах шаардлагатай.
-  const hrPersonalTaskMode = session.role === "hr_specialist";
+  const hrPersonalTaskMode = isHrOnlyRole(session);
   const workerMode = baseWorkerMode || hrPersonalTaskMode;
   const masterMode = isMasterRole(session.role);
   const seniorMasterMode = session.role === "senior_master";

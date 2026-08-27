@@ -37,6 +37,7 @@ import {
   canDeleteWorkspaceItems,
   canEditWorkspaceTaskContent,
   hasCapability,
+  isHrOnlyRole,
   isMasterRole,
   isWorkerOnly,
   requireSession,
@@ -211,7 +212,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   // Хүний нөөцийн мэргэжилтэн өөрт оноосон захирлын даалгаврыг
   // хэлтсийн төслийн scope-оор бус, ажилтны хувийн урсгалаар нээнэ.
   // Үндсэн HR цэсийг хадгалахын тулд AppMenu-д baseWorkerMode ашиглана.
-  const hrPersonalTaskMode = session.role === "hr_specialist";
+  const hrPersonalTaskMode = isHrOnlyRole(session);
   const workerMode = baseWorkerMode || hrPersonalTaskMode;
   const masterMode = isMasterRole(session.role);
   const scopedDepartmentName = await loadSessionDepartmentName(session);
@@ -297,7 +298,10 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   let projectAccess: ProjectAccessSummary | null = null;
 
   if (workerMode) {
-    if (!task.assigneeUserIds.includes(session.uid)) {
+    if (
+      !task.assigneeUserIds.includes(session.uid) &&
+      task.teamLeaderId !== session.uid
+    ) {
       redirect("/tasks");
     }
   } else if (masterMode || scopedDepartmentName) {

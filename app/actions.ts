@@ -2718,6 +2718,12 @@ export async function createTaskReportAction(formData: FormData) {
     const taskForReport = await timer.step("validation_task_load", () =>
       loadTaskForReportSubmission(taskId, connectionOverrides),
     );
+    const isAssignedReporter =
+      taskForReport.assigneeUserIds.includes(session.uid) ||
+      taskForReport.teamLeaderId === session.uid;
+    if (!isAssignedReporter && session.role !== "system_admin") {
+      redirectWithMessage(reportReturnPath, "error", "Энэ даалгавар танд оноогдоогүй байна.");
+    }
     const isPhotoFirstReport =
       isPhotoFirstReportOperation(taskForReport.operationType) ||
       isRoadAreaCleaningReportName(workItemName || taskForReport.name);
@@ -2819,6 +2825,7 @@ export async function createTaskReportAction(formData: FormData) {
         endDatetime,
         wateringVehicleId,
         wateringDriverId,
+        reporterUserId: session.uid,
       },
       connectionOverrides,
     ));
