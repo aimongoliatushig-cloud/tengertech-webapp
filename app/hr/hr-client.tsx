@@ -3634,6 +3634,7 @@ export function TimeoffRequestsClient({
   const pathname = usePathname();
   const router = useRouter();
   const requestedType = searchParams.get("type");
+  const allTypesMode = requestedType === "all";
   const defaultType: HrTimeoffRequestType =
     requestedType === "annual_leave"
       ? "annual_leave"
@@ -3689,7 +3690,9 @@ export function TimeoffRequestsClient({
   }, [editingRequest]);
 
   const visibleRequests = useMemo(() => {
-    const base = requests.filter((request) => request.requestType === defaultType);
+    const base = allTypesMode
+      ? requests
+      : requests.filter((request) => request.requestType === defaultType);
     if (filter === ALL) return base;
     if (filter === "pending") {
       return base.filter((request) => request.state === "submitted" || request.state === "hr_review");
@@ -3701,7 +3704,7 @@ export function TimeoffRequestsClient({
       );
     }
     return base.filter((request) => request.state === filter || request.requestType === filter);
-  }, [defaultType, filter, requests, today]);
+  }, [allTypesMode, defaultType, filter, requests, today]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

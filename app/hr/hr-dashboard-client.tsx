@@ -564,7 +564,6 @@ export function HrDashboardClient({
   const annualLeaveEmployees = workforceEmployees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "annual_leave");
   const sickEmployees = workforceEmployees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "sick");
   const pendingRequests = requests.filter((request) => ["submitted", "hr_review"].includes(request.state));
-  const approvedRequests = requests.filter((request) => request.state === "approved");
   const cardsSource = dashboard?.cards;
 
   // Нэмэлт үзүүлэлт: насны бүтэц, дундаж нас, хүйс
@@ -653,13 +652,11 @@ export function HrDashboardClient({
     },
     {
       kind: "requests",
-      label: "Хүсэлт",
-      value:
-        (cardsSource?.pendingRequests ?? pendingRequests.length) +
-        (cardsSource?.approvedRequests ?? approvedRequests.length),
+      label: "Хүлээгдэж буй хүсэлт",
+      value: cardsSource?.pendingRequests ?? pendingRequests.length,
       icon: FileWarning,
-      note: "Хүлээгдэж буй + батлагдсан",
-      href: "/hr/leaves",
+      note: "HR хяналт, шийдвэр хүлээж буй",
+      href: "/hr/leaves?type=all&state=pending",
     },
     {
       kind: "trial",
