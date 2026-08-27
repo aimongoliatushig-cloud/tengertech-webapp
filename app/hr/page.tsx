@@ -1,4 +1,6 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
+import { createTaskReportAction } from "@/app/actions";
+import { TaskReportModal } from "@/app/tasks/[taskId]/task-report-modal";
 import { requireSession,
   getSessionRoleLabel,
   isHrOnlyRole,
@@ -87,12 +89,16 @@ export default async function HrDashboardPage() {
           </div>
           <div className={styles.assignedTasksList}>
             {assignedTasks.slice(0, 8).map((task) => (
-              <a
+              <div
                 key={task.id}
-                href={`/tasks/${task.id}?returnTo=%2Fhr&composer=report`}
                 className={styles.assignedTaskRow}
               >
-                <span className={styles.assignedTaskName}>{task.name}</span>
+                <a
+                  href={`/tasks/${task.id}?returnTo=%2Fhr&composer=report`}
+                  className={styles.assignedTaskName}
+                >
+                  {task.name}
+                </a>
                 <span className={styles.assignedTaskMeta}>
                   {task.projectName ? <small>{task.projectName}</small> : null}
                   {task.deadline ? <small>{task.deadline}</small> : null}
@@ -107,9 +113,20 @@ export default async function HrDashboardPage() {
                   >
                     {task.statusLabel}
                   </span>
-                  <strong className={styles.assignedTaskOpen}>Нээж тайлан оруулах</strong>
+                  {task.statusKey !== "done" ? (
+                    <TaskReportModal
+                      action={createTaskReportAction}
+                      taskId={task.id}
+                      quantityOptional
+                      simpleMobile
+                      workItemName={task.name}
+                      returnTo="/hr#my-assigned-tasks"
+                      triggerClassName={styles.assignedTaskOpen}
+                      triggerContent="Тайлан оруулах"
+                    />
+                  ) : null}
                 </span>
-              </a>
+              </div>
             ))}
           </div>
           {assignedTasks.length > 8 ? (

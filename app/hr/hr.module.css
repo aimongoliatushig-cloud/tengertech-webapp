@@ -5521,8 +5521,10 @@
 .assignedTaskName {
   min-width: 0;
   overflow: hidden;
+  color: inherit;
   font-size: var(--fs-sm);
   font-weight: 700;
+  text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -5561,9 +5563,12 @@
 
 .assignedTaskOpen {
   padding: 6px 10px;
+  border: 0;
   border-radius: 8px;
   background: #25843b;
   color: #fff;
+  cursor: pointer;
+  font-family: inherit;
   font-size: var(--fs-2xs);
   font-weight: 700;
   white-space: nowrap;
