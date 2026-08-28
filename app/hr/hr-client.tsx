@@ -55,6 +55,12 @@ import styles from "./hr.module.css";
 
 const ALL = "__all__";
 const DEFAULT_EMPLOYEE_STATUS = "Идэвхтэй";
+
+function getTimeoffDepartmentFilterName(value?: string | null) {
+  const departmentName = String(value || "").trim();
+  return departmentName === "Дотоод хяналт" ? "Захиргаа" : departmentName;
+}
+
 type HrFamilyMember = NonNullable<HrEmployeeDirectoryItem["familyMembers"]>[number];
 const familyRelationLabels: Record<string, string> = {
   spouse: "Эхнэр / нөхөр",
@@ -3649,7 +3655,7 @@ export function TimeoffRequestsClient({
         ? "sick"
         : "time_off";
   const defaultFilter = searchParams.get("state") || searchParams.get("requestType") || ALL;
-  const defaultDepartment = searchParams.get("department") || ALL;
+  const defaultDepartment = getTimeoffDepartmentFilterName(searchParams.get("department")) || ALL;
   const defaultEmployeeId = searchParams.get("employeeId") || "";
   const employeeById = useMemo(
     () => new Map(employees.map((employee) => [employee.id, employee])),
@@ -3673,10 +3679,10 @@ export function TimeoffRequestsClient({
       Array.from(
         new Set(
           [
-            ...employees.map((employee) => employee.departmentName?.trim() || ""),
+            ...employees.map((employee) => getTimeoffDepartmentFilterName(employee.departmentName)),
             ...requests
               .filter((request) => request.requestType === "annual_leave")
-              .map((request) => request.departmentName.trim()),
+              .map((request) => getTimeoffDepartmentFilterName(request.departmentName)),
           ].filter(Boolean),
         ),
       ).sort(compareHrDepartmentNames),
@@ -3722,7 +3728,9 @@ export function TimeoffRequestsClient({
     const base =
       departmentFilter === ALL
         ? typeFiltered
-        : typeFiltered.filter((request) => request.departmentName === departmentFilter);
+        : typeFiltered.filter(
+            (request) => getTimeoffDepartmentFilterName(request.departmentName) === departmentFilter,
+          );
     if (filter === ALL) return base;
     if (filter === "pending") {
       return base.filter((request) => request.state === "submitted" || request.state === "hr_review");
