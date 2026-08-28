@@ -2557,6 +2557,8 @@
 
 .formPanel {
   display: grid;
+  align-self: start;
+  align-content: start;
   gap: 14px;
 }
 
@@ -3455,6 +3457,7 @@
 .twoColumn {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  align-items: start;
   gap: 16px;
 }
 
