@@ -1217,6 +1217,13 @@ function formatDateInput(value: string) {
   return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
 }
 
+function inclusiveRemainingDays(dateFrom: string, dateTo: string) {
+  const from = new Date(`${dateFrom}T00:00:00Z`);
+  const to = new Date(`${dateTo}T00:00:00Z`);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) return 0;
+  return Math.floor((to.getTime() - from.getTime()) / 86_400_000) + 1;
+}
+
 type SearchableOption = {
   id: number | string;
   name: string;
@@ -3657,6 +3664,8 @@ export function TimeoffRequestsClient({
   const [annualLeaveDateFrom, setAnnualLeaveDateFrom] = useState("");
   const [annualLeaveDateTo, setAnnualLeaveDateTo] = useState("");
   const [annualLeaveDays, setAnnualLeaveDays] = useState("");
+  const [recallRequest, setRecallRequest] = useState<HrTimeoffRequest | null>(null);
+  const [earlyReturnDate, setEarlyReturnDate] = useState("");
   const requestFormRef = useRef<HTMLFormElement>(null);
   const annualLeaveOnlyMode = defaultType === "annual_leave";
   const departmentOptions = useMemo(
@@ -3811,6 +3820,32 @@ export function TimeoffRequestsClient({
     }
   }
 
+  async function submitRecall(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!recallRequest) return;
+    const formData = new FormData(event.currentTarget);
+    formData.set("action", "recall");
+    formData.set("unusedDays", String(inclusiveRemainingDays(earlyReturnDate, recallRequest.dateTo)));
+    setPending(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/hr/timeoff-requests/${recallRequest.id}/action`, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Эргэн дуудсан бүртгэл хадгалахад алдаа гарлаа.");
+      setMessage("Амралтаас хугацаанаас өмнө ажилдаа орсныг бүртгэлээ.");
+      setRecallRequest(null);
+      setEarlyReturnDate("");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Эргэн дуудсан бүртгэл хадгалахад алдаа гарлаа.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
     <div className={mode === "hr" ? styles.singleColumn : styles.twoColumn}>
       <section className={styles.panel}>
@@ -3906,6 +3941,22 @@ export function TimeoffRequestsClient({
                     <dd>{request.durationDays} хоног</dd>
                   </div>
                 ) : null}
+                {request.earlyReturnDate ? (
+                  <>
+                    <div>
+                      <dt>Ажилдаа эргэн орсон</dt>
+                      <dd>{request.earlyReturnDate}</dd>
+                    </div>
+                    <div>
+                      <dt>Үлдсэн хоног</dt>
+                      <dd>{request.unusedDays} хоног</dd>
+                    </div>
+                    <div>
+                      <dt>Эргэн дуудсан тушаал</dt>
+                      <dd>{request.recallOrderNumber || "Бүртгээгүй"}</dd>
+                    </div>
+                  </>
+                ) : null}
                 <div>
                   <dt>Илгээсэн</dt>
                   <dd>{request.submittedBy || "Бүртгээгүй"}</dd>
@@ -3993,7 +4044,70 @@ export function TimeoffRequestsClient({
                           Устгах
                         </button>
                       ) : null}
+                      {mode === "hr" && request.requestType === "annual_leave" && request.state === "approved" ? (
+                        <button
+                          type="button"
+                          className={`${styles.actionButton} ${styles.actionButtonReview}`}
+                          onClick={() => {
+                            setRecallRequest(request);
+                            setEarlyReturnDate(request.earlyReturnDate || "");
+                          }}
+                          disabled={pending}
+                        >
+                          {request.earlyReturnDate ? "Эргэн орсон бүртгэл засах" : "Амралтаас эргэн дуудсан"}
+                        </button>
+                      ) : null}
               </div>
+              {recallRequest?.id === request.id ? (
+                <form className={styles.formSection} onSubmit={submitRecall} noValidate>
+                  <div className={styles.formSectionHeader}>
+                    <h2>Амралтаас хугацаанаас өмнө ажилдаа орсон бүртгэл</h2>
+                    <p>Анхны амралтын хугацаа өөрчлөгдөхгүй. Ашиглаагүй хоног автоматаар тооцогдоно.</p>
+                  </div>
+                  <div className={styles.formGrid}>
+                    <label className={styles.field}>
+                      <span>Ажилдаа эргэн орсон огноо</span>
+                      <input
+                        name="earlyReturnDate"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="YYYY-MM-DD"
+                        pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+                        maxLength={10}
+                        min={request.dateFrom}
+                        max={request.dateTo}
+                        required
+                        value={earlyReturnDate}
+                        onChange={(event) => setEarlyReturnDate(formatDateInput(event.target.value))}
+                      />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Ашиглаагүй үлдсэн хоног</span>
+                      <input value={inclusiveRemainingDays(earlyReturnDate, request.dateTo)} readOnly />
+                    </label>
+                    <Field name="recallOrderNumber" label="Эргэн дуудсан тушаалын дугаар" defaultValue={request.recallOrderNumber} />
+                  </div>
+                  <label className={styles.field}>
+                    <span>Тайлбар</span>
+                    <textarea name="recallNote" rows={3} defaultValue={request.recallNote} />
+                  </label>
+                  <label className={styles.field}>
+                    <span>Тушаал / шийдвэрийн хавсралт</span>
+                    <input name="files" type="file" accept="image/*,.pdf,.doc,.docx" multiple />
+                  </label>
+                  <div className={styles.actionGrid}>
+                    <button className={styles.primaryButton} disabled={pending}>Хадгалах</button>
+                    <button
+                      className={styles.secondaryButton}
+                      type="button"
+                      onClick={() => setRecallRequest(null)}
+                      disabled={pending}
+                    >
+                      Болих
+                    </button>
+                  </div>
+                </form>
+              ) : null}
             </div>
           ))}
         </div>

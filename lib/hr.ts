@@ -258,6 +258,12 @@ type HrTimeoffRequestSearchRecord = {
   note?: string | false;
   hr_note?: string | false;
   rejection_reason?: string | false;
+  early_return_date?: string | false;
+  unused_days?: number | false;
+  recall_order_no?: string | false;
+  recall_note?: string | false;
+  recalled_by?: OdooRelation;
+  recalled_date?: string | false;
   state?: string | false;
   submitted_by?: OdooRelation;
   submitted_date?: string | false;
@@ -363,6 +369,12 @@ export type HrTimeoffRequest = {
   note: string;
   hrNote: string;
   rejectionReason: string;
+  earlyReturnDate: string;
+  unusedDays: number;
+  recallOrderNumber: string;
+  recallNote: string;
+  recalledBy: string;
+  recalledDate: string;
   state: HrTimeoffRequestState;
   stateLabel: string;
   submittedBy: string;
@@ -4178,6 +4190,12 @@ function normalizeTimeoffRequest(record: Partial<HrTimeoffRequest>): HrTimeoffRe
     note: record.note || "",
     hrNote: record.hrNote || "",
     rejectionReason: record.rejectionReason || "",
+    earlyReturnDate: record.earlyReturnDate || "",
+    unusedDays: Number(record.unusedDays || 0),
+    recallOrderNumber: record.recallOrderNumber || "",
+    recallNote: record.recallNote || "",
+    recalledBy: record.recalledBy || "",
+    recalledDate: record.recalledDate || "",
     state: record.state || "draft",
     stateLabel: record.stateLabel || timeoffStateLabel(record.state || "draft"),
     submittedBy: record.submittedBy || "",
@@ -4215,6 +4233,12 @@ function normalizeTimeoffSearchRecord(record: HrTimeoffRequestSearchRecord): HrT
     note: String(record.note || ""),
     hrNote: String(record.hr_note || ""),
     rejectionReason: String(record.rejection_reason || ""),
+    earlyReturnDate: String(record.early_return_date || ""),
+    unusedDays: Number(record.unused_days || 0),
+    recallOrderNumber: String(record.recall_order_no || ""),
+    recallNote: String(record.recall_note || ""),
+    recalledBy: getRelationName(record.recalled_by),
+    recalledDate: String(record.recalled_date || ""),
     state,
     stateLabel: timeoffStateLabel(state),
     submittedBy: getRelationName(record.submitted_by),
@@ -4773,6 +4797,12 @@ export async function getTimeoffRequests(session: AppSession, filters: Record<st
             "note",
             "hr_note",
             "rejection_reason",
+            "early_return_date",
+            "unused_days",
+            "recall_order_no",
+            "recall_note",
+            "recalled_by",
+            "recalled_date",
             "state",
             "submitted_by",
             "submitted_date",
@@ -4930,18 +4960,27 @@ export async function updateTimeoffRequest(session: AppSession, requestId: numbe
 export async function actionTimeoffRequest(
   session: AppSession,
   requestId: number,
-  action: "hr_review" | "approve" | "reject" | "cancel",
-  payload: { hrNote?: string; rejectionReason?: string } = {},
+  action: "hr_review" | "approve" | "reject" | "cancel" | "recall",
+  payload: {
+    hrNote?: string;
+    rejectionReason?: string;
+    earlyReturnDate?: string;
+    unusedDays?: number;
+    recallOrderNumber?: string;
+    recallNote?: string;
+    files?: File[];
+  } = {},
 ) {
-  if (action === "approve" || action === "reject" || action === "hr_review") {
+  if (action === "approve" || action === "reject" || action === "hr_review" || action === "recall") {
     await requireHrSpecialistAccess(session);
   } else {
     await requireDepartmentHeadTimeoffRequestAccess(session);
   }
+  const attachments = await filesToAttachments(payload.files);
   const result = await executeOdooKw<Partial<HrTimeoffRequest>>(
     "municipal.hr.timeoff.request",
     "action_hr_timeoff_request",
-    [requestId, action, payload],
+    [requestId, action, { ...payload, files: undefined, attachments }],
     {},
     getConnection(session),
   );

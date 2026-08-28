@@ -25,18 +25,37 @@ export async function POST(
     if (!Number.isFinite(requestId) || requestId <= 0) {
       return jsonError("Хүсэлтийн дугаар буруу байна.", 400);
     }
-    const payload = await request.json().catch(() => ({}));
+    const isMultipart = request.headers.get("content-type")?.includes("multipart/form-data");
+    const formData = isMultipart ? await request.formData() : null;
+    const payload = formData
+      ? {
+          action: String(formData.get("action") || ""),
+          earlyReturnDate: String(formData.get("earlyReturnDate") || ""),
+          unusedDays: Number(formData.get("unusedDays") || 0),
+          recallOrderNumber: String(formData.get("recallOrderNumber") || ""),
+          recallNote: String(formData.get("recallNote") || ""),
+          files: formData.getAll("files").filter((value): value is File => value instanceof File && value.size > 0),
+        }
+      : await request.json().catch(() => ({}));
     const action = String(payload.action || "");
-    if (!["hr_review", "approve", "reject", "cancel"].includes(action)) {
+    if (!["hr_review", "approve", "reject", "cancel", "recall"].includes(action)) {
       return jsonError("Тодорхойгүй үйлдэл.", 400);
+    }
+    if (action === "recall" && !String(payload.earlyReturnDate || "")) {
+      return jsonError("Ажилдаа эргэн орсон огноог оруулна уу.", 400);
     }
     const result = await actionTimeoffRequest(
       session,
       requestId,
-      action as "hr_review" | "approve" | "reject" | "cancel",
+      action as "hr_review" | "approve" | "reject" | "cancel" | "recall",
       {
         hrNote: String(payload.hrNote || ""),
         rejectionReason: String(payload.rejectionReason || ""),
+        earlyReturnDate: String(payload.earlyReturnDate || ""),
+        unusedDays: Number(payload.unusedDays || 0),
+        recallOrderNumber: String(payload.recallOrderNumber || ""),
+        recallNote: String(payload.recallNote || ""),
+        files: payload.files,
       },
     );
     await notifyHrTimeoffRequestStatusChanged(result, session).catch((error) => {

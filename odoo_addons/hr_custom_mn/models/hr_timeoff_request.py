@@ -68,6 +68,12 @@ class MunicipalHrTimeoffRequest(models.Model):
     rejected_date = fields.Datetime(string="Татгалзсан огноо", readonly=True)
     hr_note = fields.Text(string="HR тэмдэглэл")
     rejection_reason = fields.Text(string="Татгалзсан шалтгаан")
+    early_return_date = fields.Date(string="Ажилдаа эргэн орсон огноо", tracking=True)
+    unused_days = fields.Integer(string="Ашиглаагүй үлдсэн хоног", default=0, tracking=True)
+    recall_order_no = fields.Char(string="Эргэн дуудсан тушаалын дугаар", tracking=True)
+    recall_note = fields.Text(string="Эргэн дуудсан тайлбар")
+    recalled_by = fields.Many2one("res.users", string="Эргэн дуудсан бүртгэсэн хүн", readonly=True)
+    recalled_date = fields.Datetime(string="Эргэн дуудсан бүртгэсэн огноо", readonly=True)
     state = fields.Selection(
         [
             ("draft", "Ноорог"),
@@ -105,7 +111,7 @@ class MunicipalHrTimeoffRequest(models.Model):
             if request.employee_id.department_id:
                 request.department_id = request.employee_id.department_id
 
-    @api.depends("state", "request_type", "date_from", "date_to")
+    @api.depends("state", "request_type", "date_from", "date_to", "early_return_date")
     def _compute_current_flags(self):
         today = fields.Date.context_today(self)
         for request in self:
@@ -114,6 +120,7 @@ class MunicipalHrTimeoffRequest(models.Model):
                 and request.date_from
                 and request.date_to
                 and request.date_from <= today <= request.date_to
+                and (not request.early_return_date or today < request.early_return_date)
             )
             request.is_current = is_current
             request.current_status_effect = request.request_type if is_current else "none"
@@ -367,6 +374,12 @@ class MunicipalHrTimeoffRequest(models.Model):
             "note": self.note or "",
             "hrNote": self.hr_note or "",
             "rejectionReason": self.rejection_reason or "",
+            "earlyReturnDate": str(self.early_return_date or ""),
+            "unusedDays": self.unused_days,
+            "recallOrderNumber": self.recall_order_no or "",
+            "recallNote": self.recall_note or "",
+            "recalledBy": self.recalled_by.display_name or "",
+            "recalledDate": fields.Datetime.to_string(self.recalled_date) if self.recalled_date else "",
             "state": self.state,
             "stateLabel": STATE_LABELS.get(self.state, self.state),
             "submittedBy": self.submitted_by.display_name or "",
@@ -496,6 +509,28 @@ class MunicipalHrTimeoffRequest(models.Model):
             request.action_reject()
         elif action == "cancel":
             request.action_cancel()
+        elif action == "recall":
+            request._require_hr_reviewer()
+            if request.request_type != "annual_leave" or request.state != "approved":
+                raise UserError("Зөвхөн батлагдсан ээлжийн амралтыг эргэн дуудна.")
+            early_return_date = fields.Date.to_date(payload.get("earlyReturnDate"))
+            if not early_return_date:
+                raise UserError("Ажилдаа эргэн орсон огноог оруулна уу.")
+            if early_return_date < request.date_from or early_return_date > request.date_to:
+                raise UserError("Ажилдаа орсон огноо амралтын хугацаанд багтсан байна.")
+            unused_days = (request.date_to - early_return_date).days + 1
+            request.write(
+                {
+                    "early_return_date": early_return_date,
+                    "unused_days": max(unused_days, 0),
+                    "recall_order_no": payload.get("recallOrderNumber") or "",
+                    "recall_note": payload.get("recallNote") or "",
+                    "recalled_by": self.env.user.id,
+                    "recalled_date": fields.Datetime.now(),
+                }
+            )
+            request._create_payload_attachments(payload.get("attachments") or [])
+            request.message_post(body="Ажилтан ээлжийн амралтаас хугацаанаас өмнө ажилдаа орсныг бүртгэлээ.")
         else:
             raise UserError("Тодорхойгүй үйлдэл.")
         return request._serialize()
