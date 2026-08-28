@@ -3658,18 +3658,20 @@ export function TimeoffRequestsClient({
   const [annualLeaveDateTo, setAnnualLeaveDateTo] = useState("");
   const [annualLeaveDays, setAnnualLeaveDays] = useState("");
   const requestFormRef = useRef<HTMLFormElement>(null);
-  const annualLeaveOnlyMode = mode === "hr" && defaultType === "annual_leave";
+  const annualLeaveOnlyMode = defaultType === "annual_leave";
   const departmentOptions = useMemo(
     () =>
       Array.from(
         new Set(
-          requests
-            .filter((request) => request.requestType === "annual_leave")
-            .map((request) => request.departmentName.trim())
-            .filter(Boolean),
+          [
+            ...employees.map((employee) => employee.departmentName?.trim() || ""),
+            ...requests
+              .filter((request) => request.requestType === "annual_leave")
+              .map((request) => request.departmentName.trim()),
+          ].filter(Boolean),
         ),
       ).sort(compareHrDepartmentNames),
-    [requests],
+    [employees, requests],
   );
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ulaanbaatar",
