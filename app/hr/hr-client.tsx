@@ -3690,6 +3690,7 @@ export function TimeoffRequestsClient({
   }).format(new Date());
 
   function annualLeavePeriodStatus(request: HrTimeoffRequest) {
+    if (request.earlyReturnDate && request.earlyReturnDate <= today) return "ended";
     if (request.dateTo < today) return "ended";
     if (request.dateFrom > today) return "upcoming";
     return "active";
