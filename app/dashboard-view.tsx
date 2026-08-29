@@ -3750,10 +3750,10 @@ function ExecutiveDashboardView({
           {
             label: "Шатахуун",
             value: fleetBoard.todayFuelLabel,
-            valueLabel: "Өнөөдрийн зарцуулалт",
+            valueLabel: `${fleetBoard.fuelSummaryDateKey || currentDateKey}-ны зарцуулалт`,
             note: `${fleetBoard.fuelReportRows.length} тайлан бүртгэгдсэн`,
             progress: fleetBoard.fuelReportRows.length > 0 ? 100 : 0,
-            href: `/reports/fleet?type=fuel&mode=day&date=${currentDateKey}`,
+            href: `/reports/fleet?type=fuel&mode=day&date=${fleetBoard.fuelSummaryDateKey || currentDateKey}`,
             icon: Fuel,
             tone: "orange" as const,
           },

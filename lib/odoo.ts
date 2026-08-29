@@ -1186,6 +1186,7 @@ export type FleetVehicleBoard = {
   inspectionDueCount: number;
   todayWeightLabel: string;
   todayFuelLabel: string;
+  fuelSummaryDateKey: string;
   weightReportRows: FleetVehicleDailyWeightItem[];
   fuelReportRows: FleetVehicleDailyFuelItem[];
   highestFuelVehicle: string;
@@ -6294,11 +6295,24 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
     const value = record.weight || 0;
     return sum + (record.unit === "ton" ? value * 1000 : value);
   }, 0);
-  const todayFuelLiters = fuelReportResult.records
-    .filter(
-      (record) => record.report_date === todayKey && record.state !== "failed",
-    )
-    .reduce((sum, record) => sum + (record.fuel_liters || 0), 0);
+  const todayFuelRecords = fuelReportResult.records.filter(
+    (record) => record.report_date === todayKey && record.state !== "failed",
+  );
+  const displayedFuelRecords = todayFuelRecords.length
+    ? todayFuelRecords
+    : fuelReportResult.records.filter(
+        (record) =>
+          record.report_date === previousDateKey && record.state !== "failed",
+      );
+  const displayedFuelDateKey = todayFuelRecords.length
+    ? todayKey
+    : displayedFuelRecords.length
+      ? previousDateKey
+      : "";
+  const todayFuelLiters = displayedFuelRecords.reduce(
+    (sum, record) => sum + (record.fuel_liters || 0),
+    0,
+  );
   const fuelByVehicle = new Map<number, number>();
   for (const record of fuelReportResult.records) {
     const vehicleId = relationId(record.vehicle_id);
@@ -6349,6 +6363,7 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
     ).length,
     todayWeightLabel: formatWeight(todayWeightKg, "kg"),
     todayFuelLabel: formatLiters(todayFuelLiters),
+    fuelSummaryDateKey: displayedFuelDateKey,
     weightReportRows,
     fuelReportRows,
     highestFuelVehicle: highestFuelVehicleId
