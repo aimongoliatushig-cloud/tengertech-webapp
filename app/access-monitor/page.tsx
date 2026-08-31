@@ -79,7 +79,7 @@ export default async function AccessMonitorPage() {
             />
 
             <section className={styles.summaryGrid}>
-              <article><strong>{entries.length}</strong><span>ERP-д нэвтэрч байсан</span></article>
+              <article><strong>{entries.length}</strong><span>Сүүлийн 30 хоногт нэвтэрсэн</span></article>
               <article><strong>{activeNow}</strong><span>Сүүлийн 15 минутад нэвтэрсэн</span></article>
               <article><strong>{entries.filter((entry) => entry.active).length}</strong><span>Идэвхтэй эрхтэй</span></article>
             </section>
@@ -87,7 +87,7 @@ export default async function AccessMonitorPage() {
             <section className={styles.panel}>
               <div className={styles.heading}>
                 <div><span>Хандалтын бүртгэл</span><h1>ERP хэрэглэгчид</h1></div>
-                <p>Сүүлд нэвтэрсэн огноо, цагийг Улаанбаатарын цагаар харуулав.</p>
+                <p>Сүүлийн 30 хоногийн хандалтыг сүүлд нэвтэрсэн огноогоор харуулав. Цаг нь Улаанбаатарын цагаар байна.</p>
               </div>
 
               {entries.length ? (

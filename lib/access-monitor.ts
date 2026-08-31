@@ -21,10 +21,14 @@ type OdooUserAccessRecord = {
 };
 
 export async function loadErpAccessEntries(): Promise<ErpAccessEntry[]> {
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 19)
+    .replace("T", " ");
   const users = await executeOdooKw<OdooUserAccessRecord[]>(
     "res.users",
     "search_read",
-    [[['login_date', '!=', false]]],
+    [[['login_date', '>=', since]]],
     {
       fields: ["name", "login", "login_date", "active", "share"],
       order: "login_date desc, name asc",
