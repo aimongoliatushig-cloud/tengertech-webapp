@@ -117,7 +117,14 @@ export default async function AccessMonitorPage() {
             <section className={styles.panel}>
               <div className={styles.heading}>
                 <div><span>Хандалтын бүртгэл</span><h1>ERP хэрэглэгчид</h1></div>
-                <p>Бүх идэвхтэй ажилтны ERP эрх болон нэвтэрсэн эсэхийг харуулав. Цаг нь Улаанбаатарын цагаар байна.</p>
+                <div className={styles.headingActions}>
+                  <p>Бүх идэвхтэй ажилтны ERP эрх болон нэвтэрсэн эсэхийг харуулав. Цаг нь Улаанбаатарын цагаар байна.</p>
+                  <div className={styles.exports}>
+                    <a href="/api/access-monitor/export?format=xlsx">Excel</a>
+                    <a href="/api/access-monitor/export?format=pdf">PDF</a>
+                    <a href="/api/access-monitor/export?format=docx">Word</a>
+                  </div>
+                </div>
               </div>
 
               {entries.length ? (
