@@ -160,7 +160,11 @@ export default async function AccessMonitorPage() {
                             <td>
                               <details className={styles.loginDetails}>
                                 <summary>
-                                  {loginDayCount} өдөр · {entry.loginHistory.length || (entry.lastLoginAt ? 1 : 0)} удаа
+                                  {entry.loginHistory.length
+                                    ? `${loginDayCount} өдөр · ${entry.loginHistory.length} удаа`
+                                    : entry.lastLoginAt
+                                      ? "Сүүлийн нэвтрэлт"
+                                      : "0 өдөр · 0 удаа"}
                                 </summary>
                                 <div className={styles.loginDetailsContent}>
                                   {entry.loginHistory.length ? <ul>

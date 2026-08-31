@@ -37,7 +37,8 @@ function uniqueDays(entry: ErpAccessEntry) {
 function rows(entries: ErpAccessEntry[]) {
   return entries.flatMap((entry, index) => {
     const events = loginEvents(entry);
-    const base = [index + 1, entry.name, entry.department || "Хэлтэсгүй", entry.jobTitle || "Албан тушаалгүй", entry.login || "—", dateText(entry.lastLoginAt), uniqueDays(entry), events.length];
+    const verifiedCount = entry.loginHistory.length;
+    const base = [index + 1, entry.name, entry.department || "Хэлтэсгүй", entry.jobTitle || "Албан тушаалгүй", entry.login || "—", dateText(entry.lastLoginAt), verifiedCount ? uniqueDays(entry) : "—", verifiedCount || "—"];
     return events.length
       ? events.map((event, eventIndex) => [...base, eventIndex + 1, event.date, event.device])
       : [[...base, "—", "Нэвтрээгүй", "—"]];
