@@ -27,6 +27,7 @@ import {
   Navigation,
   PlusCircle,
   Settings,
+  ShieldCheck,
   ShoppingCart,
   Trash2,
   Truck,
@@ -83,6 +84,7 @@ type MenuKey =
   | "garbage-settings"
   | "cleaning-areas"
   | "settings"
+  | "access-monitor"
   | "review"
   | "notifications"
   | "quality"
@@ -403,6 +405,7 @@ export function AppMenu({
   const reportOnlyMode =
     reportOnlyModeProp || isReportPlanningSpecialist(roleContext);
   const recordsClerkMode = isRecordsClerk(roleContext);
+  const internalControlMode = roleLabelLower.includes("дотоод хяналт");
   // "Шатахуун, жин" цэс эрхтэй хэрэглэгчид тогтмол харагдахын тулд props-оор
   // дамжуулаагүй хуудсууд дээр role/flag-аас нь дотооддоо тооцоолно (бусад
   // эрхийг roleContext-аар тооцдогтой ижил загвар). Эрхийн логик өөрчлөгдөхгүй.
@@ -927,6 +930,16 @@ export function AppMenu({
             href: "/settings",
             label: "Ерөнхий тохиргоо",
             icon: Settings,
+          },
+        ]
+      : []),
+    ...(internalControlMode
+      ? [
+          {
+            key: "access-monitor",
+            href: "/access-monitor",
+            label: "ERP хандалтын хяналт",
+            icon: ShieldCheck,
           },
         ]
       : []),

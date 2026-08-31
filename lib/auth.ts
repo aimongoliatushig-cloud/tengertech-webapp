@@ -31,9 +31,21 @@ import {
   SESSION_COOKIE_MAX_AGE_SECONDS,
   SESSION_COOKIE_NAME,
 } from "@/lib/session";
+import { isInternalControlPerson } from "@/lib/special-access";
 
 const WORKER_ROLE_REFRESH_INTERVAL_MS = 5 * 60_000;
-const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 12;
+const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 13;
+
+function resolveEffectiveRole(user: {
+  role: UserRole;
+  login?: string | null;
+  name?: string | null;
+  employeeJobTitle?: string | null;
+}) {
+  return isInternalControlPerson(user.login, user.name, user.employeeJobTitle)
+    ? "general_manager"
+    : user.role;
+}
 
 export type AppSession = {
   uid: number;
@@ -159,14 +171,20 @@ async function refreshSessionRole(session: AppSession) {
       };
     }
 
+    const refreshedRole = resolveEffectiveRole(refreshed.user);
     const groupFlagsChanged =
       JSON.stringify(refreshed.user.groupFlags) !== JSON.stringify(session.groupFlags);
     const nextDisplayRoleLabel = resolveDisplayRoleLabel(
-      refreshed.user.role,
+      refreshedRole,
       refreshed.user.employeeJobTitle,
+      isInternalControlPerson(
+        refreshed.user.login,
+        refreshed.user.name,
+        refreshed.user.employeeJobTitle,
+      ),
     );
     if (
-      refreshed.user.role === session.role &&
+      refreshedRole === session.role &&
       !groupFlagsChanged &&
       refreshed.user.employeeJobTitle === session.employeeJobTitle &&
       nextDisplayRoleLabel === session.displayRoleLabel
@@ -182,7 +200,7 @@ async function refreshSessionRole(session: AppSession) {
       ...session,
       name: refreshed.user.name,
       login: refreshed.user.login,
-      role: refreshed.user.role,
+      role: refreshedRole,
       employeeJobTitle: refreshed.user.employeeJobTitle,
       displayRoleLabel: nextDisplayRoleLabel,
       groupFlags: refreshed.user.groupFlags,
@@ -319,14 +337,25 @@ export async function signInWithOdooCredentials(
     return null;
   }
 
+  const internalControl = isInternalControlPerson(
+    result.user.login,
+    result.user.name,
+    result.user.employeeJobTitle,
+  );
+  const effectiveRole = resolveEffectiveRole(result.user);
+
   return {
     uid: result.uid,
     login: result.user.login,
     password,
     name: result.user.name,
-    role: result.user.role,
+    role: effectiveRole,
     employeeJobTitle: result.user.employeeJobTitle,
-    displayRoleLabel: resolveDisplayRoleLabel(result.user.role, result.user.employeeJobTitle),
+    displayRoleLabel: resolveDisplayRoleLabel(
+      effectiveRole,
+      result.user.employeeJobTitle,
+      internalControl,
+    ),
     groupFlags: result.user.groupFlags,
     ...getCurrentSessionConnection(),
     issuedAt: Date.now(),
@@ -354,10 +383,17 @@ export {
   isWorkerOnly,
 };
 
-function resolveDisplayRoleLabel(role: UserRole, employeeJobTitle?: string) {
+function resolveDisplayRoleLabel(
+  role: UserRole,
+  employeeJobTitle?: string,
+  preserveJobTitle = false,
+) {
   const trimmedJobTitle = employeeJobTitle?.trim();
-  if (role === "worker" && trimmedJobTitle) {
+  if ((role === "worker" || preserveJobTitle) && trimmedJobTitle) {
     return trimmedJobTitle;
+  }
+  if (preserveJobTitle) {
+    return "Дотоод хяналтын ажилтан";
   }
 
   return getRoleLabel(role);
