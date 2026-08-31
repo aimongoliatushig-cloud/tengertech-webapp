@@ -125,6 +125,13 @@ export async function getSession() {
   return session;
 }
 
+class InvalidOdooSessionCredentialsError extends Error {
+  constructor() {
+    super("Odoo session credentials are no longer valid");
+    this.name = "InvalidOdooSessionCredentialsError";
+  }
+}
+
 async function refreshSessionRole(session: AppSession) {
   const shouldForceRefresh =
     session.roleInferenceVersion !== CURRENT_SESSION_ROLE_INFERENCE_VERSION ||
@@ -164,11 +171,7 @@ async function refreshSessionRole(session: AppSession) {
   try {
     const refreshed = await authenticateOdooUser(session.login, session.password);
     if (!refreshed || refreshed.uid !== session.uid) {
-      return {
-        ...session,
-        roleCheckedAt: Date.now(),
-        roleInferenceVersion: CURRENT_SESSION_ROLE_INFERENCE_VERSION,
-      };
+      throw new InvalidOdooSessionCredentialsError();
     }
 
     const refreshedRole = resolveEffectiveRole(refreshed.user);
@@ -207,7 +210,10 @@ async function refreshSessionRole(session: AppSession) {
       roleCheckedAt: Date.now(),
       roleInferenceVersion: CURRENT_SESSION_ROLE_INFERENCE_VERSION,
     } satisfies AppSession;
-  } catch {
+  } catch (error) {
+    if (error instanceof InvalidOdooSessionCredentialsError) {
+      throw error;
+    }
     return {
       ...session,
       roleCheckedAt: Date.now(),
@@ -231,15 +237,12 @@ async function readSession(): Promise<SessionReadResult> {
       !session.odooDb ||
       normalizeSessionUrl(session.odooUrl) !== currentConnection.odooUrl ||
       session.odooDb.trim() !== currentConnection.odooDb;
-    const normalizedSession = hasConnectionMismatch
-      ? {
-          ...session,
-          ...currentConnection,
-        }
-      : session;
+    if (hasConnectionMismatch) {
+      return { session: null, hasInvalidToken: true };
+    }
 
     return {
-      session: await refreshSessionRole(normalizedSession),
+      session: await refreshSessionRole(session),
       hasInvalidToken: false,
     };
   } catch {
