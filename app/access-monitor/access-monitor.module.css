@@ -1,4 +1,4 @@
-.summaryGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+.summaryGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
 .summaryGrid article, .panel { border: 1px solid var(--ds-border); border-radius: var(--ds-radius-card); background: var(--ds-panel-bg); box-shadow: var(--ds-shadow-panel); }
 .summaryGrid article { display: grid; gap: 5px; padding: 20px; }
 .summaryGrid strong { color: #176b3a; font-size: 28px; }
