@@ -59,6 +59,7 @@ import {
   type UserRole,
 } from "@/lib/roles";
 import { cn } from "@/lib/utils";
+import { isInternalControlPerson } from "@/lib/special-access";
 
 import { PendingLinkIndicator } from "./pending-link-indicator";
 import { ThemeToggle } from "./theme-toggle";
@@ -405,7 +406,7 @@ export function AppMenu({
   const reportOnlyMode =
     reportOnlyModeProp || isReportPlanningSpecialist(roleContext);
   const recordsClerkMode = isRecordsClerk(roleContext);
-  const internalControlMode = roleLabelLower.includes("дотоод хяналт");
+  const internalControlMode = isInternalControlPerson(undefined, userName, roleLabel);
   // "Шатахуун, жин" цэс эрхтэй хэрэглэгчид тогтмол харагдахын тулд props-оор
   // дамжуулаагүй хуудсууд дээр role/flag-аас нь дотооддоо тооцоолно (бусад
   // эрхийг roleContext-аар тооцдогтой ижил загвар). Эрхийн логик өөрчлөгдөхгүй.
