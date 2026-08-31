@@ -50,10 +50,21 @@ function recentLoginValue(value: string, cutoff: number) {
   return Number.isFinite(timestamp) && timestamp >= cutoff;
 }
 
+const SYSTEM_ADMIN_TOKENS = new Set([
+  "admin", "administrator", "system administrator", "odoo admin", "odoo administrator",
+  "админ", "администратор", "систем админ", "системийн админ", "систем администратор",
+]);
+
+function isSystemAdminEntry(entry: ErpAccessEntry) {
+  const normalize = (value: string) => value.trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
+  const loginName = normalize(entry.login).split("@")[0];
+  return SYSTEM_ADMIN_TOKENS.has(loginName) || SYSTEM_ADMIN_TOKENS.has(normalize(entry.name));
+}
+
 export function filterRecentErpAccessEntries(entries: ErpAccessEntry[], days = 30) {
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   return entries.filter((entry) =>
-    entry.hasAccount && (
+    entry.hasAccount && !isSystemAdminEntry(entry) && (
       recentLoginValue(entry.lastLoginAt, cutoff) ||
       entry.loginHistory.some((event) => recentLoginValue(event.loggedInAt, cutoff))
     ),
