@@ -60,8 +60,31 @@ export function ChatClient() {
 
   const active = snapshot.conversations.find((item) => item.id === activeId) ?? snapshot.conversations[0];
   const messages = useMemo(() => snapshot.messages.filter((item) => item.conversationId === active?.id), [snapshot.messages, active?.id]);
-  const filteredEmployees = snapshot.employees.filter((item) => item.id !== snapshot.currentUserId && `${item.name} ${item.department} ${item.jobTitle}`.toLowerCase().includes(search.toLowerCase()));
+  const filteredEmployees = useMemo(
+    () => snapshot.employees.filter(
+      (item) =>
+        item.id !== snapshot.currentUserId &&
+        `${item.name} ${item.department} ${item.jobTitle}`.toLowerCase().includes(search.toLowerCase()),
+    ),
+    [search, snapshot.currentUserId, snapshot.employees],
+  );
+  const filteredEmployeeIds = useMemo(
+    () => filteredEmployees.map((employee) => employee.id),
+    [filteredEmployees],
+  );
+  const allFilteredEmployeesSelected =
+    filteredEmployeeIds.length > 0 && filteredEmployeeIds.every((employeeId) => selected.includes(employeeId));
   const groupedEmployees = useMemo(() => Object.entries(filteredEmployees.reduce<Record<string, Employee[]>>((groups, employee) => { const key = employee.department || "Бусад"; (groups[key] ||= []).push(employee); return groups; }, {})), [filteredEmployees]);
+
+  function toggleAllFilteredEmployees() {
+    setSelected((current) => {
+      if (filteredEmployeeIds.length > 0 && filteredEmployeeIds.every((employeeId) => current.includes(employeeId))) {
+        const filteredIdSet = new Set(filteredEmployeeIds);
+        return current.filter((employeeId) => !filteredIdSet.has(employeeId));
+      }
+      return Array.from(new Set([...current, ...filteredEmployeeIds]));
+    });
+  }
 
   useEffect(() => {
     if (!active?.id) return;
@@ -168,6 +191,13 @@ export function ChatClient() {
     {showCreate ? <div className={styles.modalBackdrop}><div className={styles.chatModal} role="dialog" aria-modal="true" aria-label="Шинэ чат"><div className={styles.modalHeader}><div><strong>Шинэ чат эсвэл групп</strong><span>Ажилтнуудаа сонгоно уу</span></div><button type="button" className={styles.iconButton} onClick={() => setShowCreate(false)}><X /></button></div>
       <label className={styles.searchBox}><Search/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Нэр, хэлтэс, албан тушаал..."/></label>
       {selected.length > 1 ? <input className={styles.groupNameInput} value={groupName} onChange={(event) => setGroupName(event.target.value)} placeholder="Группийн нэр"/> : null}
+      <div className={styles.selectAllRow}>
+        <label>
+          <input type="checkbox" checked={allFilteredEmployeesSelected} disabled={!filteredEmployeeIds.length} onChange={toggleAllFilteredEmployees}/>
+          <span><strong>Бүгдийг сонгох</strong><small>Харагдаж буй {filteredEmployeeIds.length} ажилтан</small></span>
+        </label>
+        <strong>{selected.length} сонгосон</strong>
+      </div>
       <div className={styles.employeeList}>{filteredEmployees.map((employee) => <label key={employee.id} className={styles.employeeOption}><input type="checkbox" checked={selected.includes(employee.id)} onChange={() => setSelected((items) => items.includes(employee.id) ? items.filter((id) => id !== employee.id) : [...items, employee.id])}/><span className={styles.conversationAvatar}>{employee.name.slice(0, 1)}</span><span><strong>{employee.name}</strong><small>{employee.jobTitle} · {employee.department}</small></span></label>)}</div>
       <button type="button" className={styles.createChatButton} disabled={!selected.length || sending || (selected.length > 1 && !groupName.trim())} onClick={createConversation}>{selected.length > 1 ? "Групп үүсгэх" : "Чат эхлүүлэх"}</button>
     </div></div> : null}
