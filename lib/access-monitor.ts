@@ -1,6 +1,7 @@
 import "server-only";
 
 import { executeOdooKw } from "@/lib/odoo";
+import { loadErpLoginAudit, type ErpLoginAuditEvent } from "@/lib/erp-login-audit";
 
 export type ErpAccessEntry = {
   id: number;
@@ -12,6 +13,7 @@ export type ErpAccessEntry = {
   hasAccount: boolean;
   department: string;
   jobTitle: string;
+  loginHistory: ErpLoginAuditEvent[];
 };
 
 type OdooUserAccessRecord = {
@@ -36,7 +38,7 @@ function relationName(value?: [number, string] | false) {
 }
 
 export async function loadErpAccessEntries(): Promise<ErpAccessEntry[]> {
-  const [users, employees] = await Promise.all([
+  const [users, employees, loginAudit] = await Promise.all([
     executeOdooKw<OdooUserAccessRecord[]>(
       "res.users",
       "search_read",
@@ -58,9 +60,16 @@ export async function loadErpAccessEntries(): Promise<ErpAccessEntry[]> {
         limit: 2000,
       },
     ),
+    loadErpLoginAudit(30),
   ]);
 
   const usersById = new Map(users.map((user) => [user.id, user]));
+  const auditByUserId = new Map<number, ErpLoginAuditEvent[]>();
+  for (const event of loginAudit) {
+    const items = auditByUserId.get(event.userId) || [];
+    items.push(event);
+    auditByUserId.set(event.userId, items);
+  }
   return employees.map((employee) => {
     const userId = Array.isArray(employee.user_id) ? employee.user_id[0] : 0;
     const user = usersById.get(userId);
@@ -74,6 +83,7 @@ export async function loadErpAccessEntries(): Promise<ErpAccessEntry[]> {
       hasAccount: Boolean(user),
       department: relationName(employee.department_id),
       jobTitle: relationName(employee.job_id),
+      loginHistory: auditByUserId.get(userId) || [],
     };
   });
 }

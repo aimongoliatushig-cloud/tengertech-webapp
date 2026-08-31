@@ -4,6 +4,7 @@ import { buildSessionCookieHeader, signInWithOdooCredentials } from "@/lib/auth"
 import { clearLoginRateLimit, isAllowedPostOrigin, isLoginRateLimited } from "@/lib/auth-guard";
 import { canAccessGeneralDashboard, GENERAL_DASHBOARD_PATH } from "@/lib/general-dashboard-access";
 import { buildPublicUrl } from "@/lib/request-url";
+import { recordErpLogin } from "@/lib/erp-login-audit";
 import { warmCommonWorkspace } from "@/lib/workspace-warm";
 
 const WORK_DASHBOARD_HOME = "/";
@@ -75,6 +76,9 @@ export async function POST(request: Request) {
     }
 
     clearLoginRateLimit(request, login);
+    await recordErpLogin(session).catch((error) => {
+      console.warn("ERP login audit could not be recorded:", error);
+    });
     warmPostLoginWorkspace(session);
 
     const response = redirectTo(request, getPostLoginPath(session));

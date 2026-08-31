@@ -41,6 +41,28 @@ function isWithinLast30Days(value: string) {
   return Boolean(date && Date.now() - date.getTime() <= 30 * 24 * 60 * 60 * 1000);
 }
 
+function formatAuditDate(value: string) {
+  return new Intl.DateTimeFormat("mn-MN", {
+    timeZone: "Asia/Ulaanbaatar",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(value));
+}
+
+function uniqueLoginDays(values: string[]) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ulaanbaatar",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return new Set(values.map((value) => formatter.format(new Date(value)))).size;
+}
+
 export default async function AccessMonitorPage() {
   const session = await requireSession();
   const internalControl = isInternalControlPerson(
@@ -101,7 +123,7 @@ export default async function AccessMonitorPage() {
               {entries.length ? (
                 <div className={styles.tableWrap}>
                   <table>
-                    <thead><tr><th>№</th><th>Ажилтан</th><th>Хэлтэс / албан тушаал</th><th>Нэвтрэх нэр</th><th>Сүүлд нэвтэрсэн</th><th>Төлөв</th></tr></thead>
+                    <thead><tr><th>№</th><th>Ажилтан</th><th>Хэлтэс / албан тушаал</th><th>Нэвтрэх нэр</th><th>Сүүлд нэвтэрсэн</th><th>Нэвтэрсэн өдрүүд</th><th>Төлөв</th></tr></thead>
                     <tbody>
                       {entries.map((entry, index) => {
                         const recent = isRecentlyActive(entry.lastLoginAt);
@@ -115,6 +137,7 @@ export default async function AccessMonitorPage() {
                               : last30Days
                                 ? "30 хоногт нэвтэрсэн"
                                 : "30 хоногт нэвтрээгүй";
+                        const loginDayCount = uniqueLoginDays(entry.loginHistory.map((event) => event.loggedInAt));
                         return (
                           <tr key={entry.id}>
                             <td>{index + 1}</td>
@@ -122,6 +145,18 @@ export default async function AccessMonitorPage() {
                             <td><strong>{entry.department || "Хэлтэсгүй"}</strong><small>{entry.jobTitle || "Албан тушаалгүй"}</small></td>
                             <td>{entry.login || "—"}</td>
                             <td>{formatDate(entry.lastLoginAt)}</td>
+                            <td>
+                              {entry.loginHistory.length ? (
+                                <details className={styles.loginDetails}>
+                                  <summary>{loginDayCount} өдөр · {entry.loginHistory.length} удаа</summary>
+                                  <ul>
+                                    {entry.loginHistory.map((event) => (
+                                      <li key={event.id}><strong>{formatAuditDate(event.loggedInAt)}</strong><small>{event.device}</small></li>
+                                    ))}
+                                  </ul>
+                                </details>
+                              ) : <span className={styles.noHistory}>{entry.lastLoginAt ? "Шинэ түүх бүртгэгдэж эхэлнэ" : "Нэвтрээгүй"}</span>}
+                            </td>
                             <td><span className={recent ? styles.online : last30Days ? styles.enabled : styles.disabled}>{status}</span></td>
                           </tr>
                         );
