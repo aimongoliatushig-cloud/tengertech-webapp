@@ -137,7 +137,12 @@ export default async function AccessMonitorPage() {
                               : last30Days
                                 ? "30 хоногт нэвтэрсэн"
                                 : "30 хоногт нэвтрээгүй";
-                        const loginDayCount = uniqueLoginDays(entry.loginHistory.map((event) => event.loggedInAt));
+                        const historyDates = entry.loginHistory.map((event) => event.loggedInAt);
+                        const loginDayCount = historyDates.length
+                          ? uniqueLoginDays(historyDates)
+                          : entry.lastLoginAt
+                            ? 1
+                            : 0;
                         return (
                           <tr key={entry.id}>
                             <td>{index + 1}</td>
@@ -146,16 +151,23 @@ export default async function AccessMonitorPage() {
                             <td>{entry.login || "—"}</td>
                             <td>{formatDate(entry.lastLoginAt)}</td>
                             <td>
-                              {entry.loginHistory.length ? (
-                                <details className={styles.loginDetails}>
-                                  <summary>{loginDayCount} өдөр · {entry.loginHistory.length} удаа</summary>
-                                  <ul>
+                              <details className={styles.loginDetails}>
+                                <summary>
+                                  {loginDayCount} өдөр · {entry.loginHistory.length || (entry.lastLoginAt ? 1 : 0)} удаа
+                                </summary>
+                                <div className={styles.loginDetailsContent}>
+                                  {entry.loginHistory.length ? <ul>
                                     {entry.loginHistory.map((event) => (
                                       <li key={event.id}><strong>{formatAuditDate(event.loggedInAt)}</strong><small>{event.device}</small></li>
                                     ))}
-                                  </ul>
-                                </details>
-                              ) : <span className={styles.noHistory}>{entry.lastLoginAt ? "Шинэ түүх бүртгэгдэж эхэлнэ" : "Нэвтрээгүй"}</span>}
+                                  </ul> : entry.lastLoginAt ? (
+                                    <div className={styles.legacyLogin}>
+                                      <strong>{formatDate(entry.lastLoginAt)}</strong>
+                                      <small>Odoo-д хадгалагдсан хамгийн сүүлийн нэвтрэлт</small>
+                                    </div>
+                                  ) : <span className={styles.noHistory}>Одоогоор нэвтрээгүй</span>}
+                                </div>
+                              </details>
                             </td>
                             <td><span className={recent ? styles.online : last30Days ? styles.enabled : styles.disabled}>{status}</span></td>
                           </tr>
