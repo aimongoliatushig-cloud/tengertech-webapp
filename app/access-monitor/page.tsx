@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
-import { loadErpAccessEntries } from "@/lib/access-monitor";
+import { filterRecentErpAccessEntries, loadErpAccessEntries } from "@/lib/access-monitor";
 import { getSessionRoleLabel, hasCapability, requireSession } from "@/lib/auth";
 import { isInternalControlPerson } from "@/lib/special-access";
 
@@ -72,7 +72,7 @@ export default async function AccessMonitorPage() {
   );
   if (!internalControl && session.role !== "system_admin") redirect("/");
 
-  const entries = await loadErpAccessEntries().catch(() => []);
+  const entries = filterRecentErpAccessEntries(await loadErpAccessEntries().catch(() => []));
   const activeNow = entries.filter((entry) => isRecentlyActive(entry.lastLoginAt)).length;
   const loggedInCount = entries.filter((entry) => Boolean(entry.lastLoginAt)).length;
   const last30DayCount = entries.filter((entry) => isWithinLast30Days(entry.lastLoginAt)).length;
@@ -108,7 +108,7 @@ export default async function AccessMonitorPage() {
             />
 
             <section className={styles.summaryGrid}>
-              <article><strong>{entries.length}</strong><span>Нийт идэвхтэй ажилтан</span></article>
+              <article><strong>{entries.length}</strong><span>30 хоногт нэвтэрсэн ажилтан</span></article>
               <article><strong>{loggedInCount}</strong><span>ERP-д нэвтэрч байсан</span></article>
               <article><strong>{last30DayCount}</strong><span>Сүүлийн 30 хоногт нэвтэрсэн</span></article>
               <article><strong>{activeNow}</strong><span>Сүүлийн 15 минутад нэвтэрсэн</span></article>
@@ -116,9 +116,9 @@ export default async function AccessMonitorPage() {
 
             <section className={styles.panel}>
               <div className={styles.heading}>
-                <div><span>Хандалтын бүртгэл</span><h1>ERP хэрэглэгчид</h1></div>
+                <div><span>Хандалтын бүртгэл</span><h1>Сүүлийн 30 хоногт нэвтэрсэн ERP хэрэглэгчид</h1></div>
                 <div className={styles.headingActions}>
-                  <p>Бүх идэвхтэй ажилтны ERP эрх болон нэвтэрсэн эсэхийг харуулав. Цаг нь Улаанбаатарын цагаар байна.</p>
+                  <p>ERP эрхтэй, сүүлийн 30 хоногт нэвтэрсэн ажилтнуудыг харуулав. Цаг нь Улаанбаатарын цагаар байна.</p>
                   <div className={styles.exports}>
                     <a href="/api/access-monitor/export?format=xlsx">Excel</a>
                     <a href="/api/access-monitor/export?format=pdf">PDF</a>

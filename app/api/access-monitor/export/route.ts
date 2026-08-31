@@ -1,4 +1,4 @@
-import { loadErpAccessEntries } from "@/lib/access-monitor";
+import { filterRecentErpAccessEntries, loadErpAccessEntries } from "@/lib/access-monitor";
 import { buildAccessMonitorDocx, buildAccessMonitorPdf, buildAccessMonitorXlsx } from "@/lib/access-monitor-export";
 import { getSession } from "@/lib/auth";
 import { isInternalControlPerson } from "@/lib/special-access";
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const allowed = session.role === "system_admin" || isInternalControlPerson(session.login, session.name, session.employeeJobTitle);
   if (!allowed) return Response.json({ error: "Тайлан татах эрхгүй байна." }, { status: 403 });
 
-  const entries = await loadErpAccessEntries();
+  const entries = filterRecentErpAccessEntries(await loadErpAccessEntries());
   const format = new URL(request.url).searchParams.get("format")?.toLowerCase() || "xlsx";
   const fileBase = `erp-login-report-${new Date().toISOString().slice(0, 10)}`;
   if (format === "docx" || format === "word") {

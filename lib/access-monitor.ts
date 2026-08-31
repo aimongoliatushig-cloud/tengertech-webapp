@@ -43,6 +43,23 @@ function relationName(value?: [number, string] | false) {
   return Array.isArray(value) ? value[1] : "";
 }
 
+function recentLoginValue(value: string, cutoff: number) {
+  if (!value) return false;
+  const normalized = value.includes("T") ? value : `${value.replace(" ", "T")}Z`;
+  const timestamp = new Date(normalized).getTime();
+  return Number.isFinite(timestamp) && timestamp >= cutoff;
+}
+
+export function filterRecentErpAccessEntries(entries: ErpAccessEntry[], days = 30) {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  return entries.filter((entry) =>
+    entry.hasAccount && (
+      recentLoginValue(entry.lastLoginAt, cutoff) ||
+      entry.loginHistory.some((event) => recentLoginValue(event.loggedInAt, cutoff))
+    ),
+  );
+}
+
 export async function loadErpAccessEntries(): Promise<ErpAccessEntry[]> {
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace("T", " ");
   const [users, employees, loginAudit, odooLoginRecords] = await Promise.all([
