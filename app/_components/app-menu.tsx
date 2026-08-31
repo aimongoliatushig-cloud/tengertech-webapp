@@ -243,6 +243,7 @@ function createMenuGroup(
 
 function compactManagerMenuItems(items: MenuItem[]) {
   const dashboardItem = items.find((item) => item.key === "dashboard");
+  const accessMonitorItem = items.find((item) => item.key === "access-monitor");
   const hrItem = items.find((item) => item.key === "hr");
   const hrChildren = items.filter((item) => item.key.startsWith("hr-"));
   // Зөвхөн хэлтсийн жагсаалтын item-үүд (department-0, department-1 ...).
@@ -267,6 +268,7 @@ function compactManagerMenuItems(items: MenuItem[]) {
   ];
   const groupedKeys = new Set([
     "dashboard",
+    ...(accessMonitorItem ? [accessMonitorItem.key] : []),
     ...(hrItem ? [hrItem.key] : []),
     "procurement",
     "employees",
@@ -293,6 +295,7 @@ function compactManagerMenuItems(items: MenuItem[]) {
 
   return [
     dashboardItem,
+    accessMonitorItem,
     hrItem ?? createMenuGroup("manager-hr", "Хүний нөөц", Users, hrChildren),
     createMenuGroup(
       "manager-departments",
