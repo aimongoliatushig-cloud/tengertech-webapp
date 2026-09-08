@@ -309,7 +309,7 @@ class GreenCleanWorkTemplate(models.Model):
         category_model = self.env["green.clean.work.category"].sudo()
         unit_model = self.env["green.clean.unit"].sudo()
         defaults = [
-            ("GC-TREE-SHAPING", "Мод хэлбэржүүлэлт", "tree_shaping", "ш", "quantity", "daily", 54, 1286, 0),
+            ("GC-TREE-SHAPING", "Мод хэлбэржүүлэлт", "tree_shaping", "ш", "one_time", "daily", 0, 1286, 0),
             ("GC-TREE-WATERING", "Мод усалгаа", "tree_watering", "ш", "quantity", "three_weekly", 18538, 18538, 70),
             ("GC-FLOWER-PLANTING", "Цэцэг тарих", "flower_planting", "ш", "quantity", "daily", 0, 260000, 0),
             ("GC-TREE-REPLANTING", "Мод, бут нөхөн тарих", "tree_replanting", "ш", "quantity", "daily", 0, 850, 0),
@@ -318,7 +318,12 @@ class GreenCleanWorkTemplate(models.Model):
             ("GC-FLOOD-DAM", "Үерийн далан цэвэрлэгээ", "flood_dam", "м", "quantity", "daily", 0, 450, 0),
         ]
         for code, name, category_code, unit_code, work_kind, frequency, daily, total, liters in defaults:
-            if self.sudo().search_count([("code", "=", code)]):
+            existing = self.sudo().search([("code", "=", code)], limit=1)
+            if existing:
+                # Нэг удаагийн ажлыг хуучин тохиргоогоор өдөр бүр дахин
+                # үүсгэхээс хамгаалж, seed дахин ажиллахад төрлийг засна.
+                if code == "GC-TREE-SHAPING":
+                    existing.write({"work_kind": "one_time", "daily_planned_quantity": 0})
                 continue
             category = category_model.search([("code", "=", category_code)], limit=1)
             unit = unit_model.search([("code", "=", unit_code)], limit=1)
