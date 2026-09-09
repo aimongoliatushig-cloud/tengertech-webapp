@@ -1040,6 +1040,7 @@
 .messageHeader .headerIdentity h2 { margin: 0; font-size: 16px; }
 .messageHeader .headerIdentity span { display: block; margin-top: 3px; overflow: hidden; color: #708077; font-size: 11px; text-overflow: ellipsis; text-transform: none; white-space: nowrap; }
 .messageList { gap: 5px; padding: 22px clamp(14px,3vw,36px); background: radial-gradient(circle at 30% 20%, rgba(229,243,233,.55), transparent 30%), #fafbfa; }
+.messageEnd { flex: 0 0 1px; width: 100%; }
 .messageRow { gap: 7px; }
 .messageAvatar { flex-basis: 30px; width: 30px; height: 30px; }
 .messageBubble { width: auto; max-width: min(72%, 620px); padding: 9px 12px 6px; border: 0; border-radius: 18px 18px 18px 5px; background: #ecefed; box-shadow: none; }

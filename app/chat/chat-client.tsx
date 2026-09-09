@@ -34,6 +34,8 @@ export function ChatClient() {
   const [recording, setRecording] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const messageEndRef = useRef<HTMLDivElement | null>(null);
+  const previousConversationRef = useRef("");
 
   const load = useCallback(async () => {
     const response = await fetch("/api/chat?view=snapshot", { cache: "no-store" });
@@ -70,6 +72,13 @@ export function ChatClient() {
   const messages = useMemo(() => snapshot.messages.filter((item) => item.conversationId === active?.id), [snapshot.messages, active?.id]);
   const activeMembers = useMemo(() => snapshot.employees.filter((employee) => active?.memberIds.includes(employee.id)), [active?.memberIds, snapshot.employees]);
   const directMember = active?.type === "direct" ? activeMembers.find((employee) => employee.id !== snapshot.currentUserId) : undefined;
+
+  useEffect(() => {
+    if (!active?.id) return;
+    const conversationChanged = previousConversationRef.current !== active.id;
+    previousConversationRef.current = active.id;
+    messageEndRef.current?.scrollIntoView({ behavior: conversationChanged ? "auto" : "smooth", block: "end" });
+  }, [active?.id, messages.length]);
   const filteredEmployees = useMemo(
     () => snapshot.employees.filter(
       (item) =>
@@ -213,7 +222,7 @@ export function ChatClient() {
             {message.attachment ? attachmentView(message.attachment) : null}{message.body ? <p>{message.body}</p> : null}<time>{formatMessageTime(message.sentAt)}{own ? " · Илгээгдсэн" : ""}</time>
           </article>
         </div>;
-      })}</div>
+      })}<div ref={messageEndRef} className={styles.messageEnd} aria-hidden /></div>
       {error ? <p className={styles.chatError}>{error}</p> : null}
       <form className={styles.composer} onSubmit={send}>{pendingFile ? <div className={styles.pendingFile}><span>{pendingFile.type.startsWith("audio/") ? "Voice: " : "Файл: "}{pendingFile.name}</span><button type="button" onClick={() => setPendingFile(null)}><X/></button></div> : null}<div className={styles.composerRow}><div className={styles.mediaActions}><label title="Зураг эсвэл файл"><Paperclip/><input type="file" accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><label title="Камераар зураг авах"><Camera/><input type="file" accept="image/*" capture="environment" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><button type="button" className={recording ? styles.recordingButton : ""} onClick={() => void toggleRecording()} title="Voice бичих">{recording ? <Square/> : <Mic/>}</button></div><textarea id="chat_message" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={submitOnEnter} placeholder={recording ? "Voice бичиж байна..." : "Aa"} rows={1}/><button type="submit" aria-label="Илгээх" disabled={(!draft.trim() && !pendingFile) || sending}>{sending ? <span className={styles.sendingLabel}>...</span> : <Send/>}</button></div><small className={styles.composerHint}>Enter — илгээх · Shift+Enter — шинэ мөр</small></form>
     </div>
