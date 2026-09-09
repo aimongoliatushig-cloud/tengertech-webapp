@@ -1020,9 +1020,14 @@
 .directoryEmployee:hover { background: #f0f7f2; }
 .directoryAvatar { width: 44px; height: 44px; color: #196c35; background: #e6f4ea; }
 .conversationList { gap: 2px; margin: 0 -4px; }
-.conversationButton { min-height: 68px; padding: 9px 8px; border: 0; border-radius: 12px; }
+.conversationItem { position: relative; display: flex; align-items: center; border-radius: 12px; }
+.conversationButton { flex: 1; min-width: 0; min-height: 68px; padding: 9px 40px 9px 8px; border: 0; border-radius: 12px; }
 .conversationButton:hover { background: #f5f7f5; }
 .conversationButtonActive { background: #e9f5ec; }
+.deleteConversationButton { position: absolute; right: 7px; display: inline-grid; width: 30px; height: 30px; place-items: center; border: 0; border-radius: 50%; color: #7c8780; background: transparent; opacity: 0; cursor: pointer; }
+.conversationItem:hover .deleteConversationButton,.deleteConversationButton:focus-visible { opacity: 1; }
+.deleteConversationButton:hover { color: #b42318; background: #fdebea; }
+.deleteConversationButton svg { width: 16px; height: 16px; }
 .conversationAvatar { width: 46px; height: 46px; border-radius: 50%; color: #196c35; background: #dff1e4; }
 .conversationCount { display: grid; min-width: 22px; height: 22px; place-items: center; border-radius: 999px; color: #fff; background: #218646; }
 
@@ -1052,6 +1057,9 @@
 .composer > .composerRow > button { display: inline-grid; width: 42px; height: 42px; min-height: 42px; padding: 0; place-items: center; background: #218646; }
 .composer > .composerRow > button svg { width: 19px; height: 19px; }
 .sendingLabel { font-size: 16px; }
+.composerHint { margin-left: auto; color: #8a958e; font-size: 10px; }
+
+@media (hover: none) { .deleteConversationButton { opacity: .75; } }
 
 .detailsPanel { display: flex; flex-direction: column; align-items: center; padding: 28px 18px; border-left: 1px solid #e7ebe8; }
 .detailsAvatar { display: inline-grid; width: 76px; height: 76px; place-items: center; overflow: hidden; border-radius: 50%; color: #196c35; background: #dff1e4; font-size: 22px; font-weight: 800; }
@@ -1087,4 +1095,5 @@
   .mediaActions label,.mediaActions button { width: 32px; height: 36px; }
   .composer > .composerRow > button { width: 38px; height: 38px; min-height: 38px; }
   .headerInfoButton { width: 38px; height: 38px; }
+  .composerHint { display: none; }
 }

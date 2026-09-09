@@ -1,11 +1,11 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Camera, FileText, Info, MessageCirclePlus, Mic, Paperclip, Search, Send, Square, Trash2, Users, X } from "lucide-react";
 import styles from "./chat.module.css";
 
 type Employee = { id: number; name: string; department: string; jobTitle: string; photoUrl: string };
-type Conversation = { id: string; type: "general" | "direct" | "group"; name: string; description: string; memberIds: number[]; updatedAt: string };
+type Conversation = { id: string; type: "general" | "direct" | "group"; name: string; description: string; createdBy: number; memberIds: number[]; updatedAt: string };
 type Attachment = { id: string; name: string; mimeType: string; size: number };
 type ChatMessage = { id: string; conversationId: string; authorId: number; author: string; roleLabel: string; body: string; sentAt: string; readBy: number[]; attachment?: Attachment };
 type Snapshot = { conversations: Conversation[]; messages: ChatMessage[]; employees: Employee[]; currentUserId: number; onlineUserIds: number[] };
@@ -138,6 +138,23 @@ export function ChatClient() {
     catch (cause) { setError(cause instanceof Error ? cause.message : "Зурвас устгаж чадсангүй."); }
   }
 
+  async function removeConversation(conversation: Conversation) {
+    if (conversation.type === "general" || !window.confirm(`“${conversationName(conversation)}” чатыг бүх зурвастай нь устгах уу?`)) return;
+    setError("");
+    try {
+      await post({ action: "delete-conversation", conversationId: conversation.id });
+      setActiveId("");
+      setMobileConversationOpen(false);
+      await load();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Чатыг устгаж чадсангүй."); }
+  }
+
+  function submitOnEnter(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  }
+
   function conversationName(item: Conversation) {
     if (item.type !== "direct") return item.name;
     return snapshot.employees.find((employee) => item.memberIds.includes(employee.id) && employee.id !== snapshot.currentUserId)?.name || item.name;
@@ -176,11 +193,11 @@ export function ChatClient() {
       <div className={styles.conversationList}>{snapshot.conversations.map((item) => {
         const last = snapshot.messages.filter((message) => message.conversationId === item.id).at(-1);
         const unread = snapshot.messages.filter((message) => message.conversationId === item.id && !message.readBy.includes(snapshot.currentUserId)).length;
-        return <button key={item.id} type="button" className={`${styles.conversationButton} ${item.id === active?.id ? styles.conversationButtonActive : ""}`} onClick={() => { setActiveId(item.id); setMobileConversationOpen(true); }}>
+        return <div key={item.id} className={`${styles.conversationItem} ${item.id === active?.id ? styles.conversationButtonActive : ""}`}><button type="button" className={styles.conversationButton} onClick={() => { setActiveId(item.id); setMobileConversationOpen(true); }}>
           <span className={styles.conversationAvatar}>{item.type === "group" || item.type === "general" ? <Users /> : initials(conversationName(item))}</span>
           <span className={styles.conversationCopy}><strong>{conversationName(item)}</strong><small>{last?.body || item.description}</small></span>
           {unread > 0 ? <span className={styles.conversationCount}>{unread}</span> : null}
-        </button>;
+        </button>{item.type === "direct" || (item.type === "group" && item.createdBy === snapshot.currentUserId) ? <button type="button" className={styles.deleteConversationButton} onClick={() => void removeConversation(item)} aria-label={`${conversationName(item)} чатыг устгах`} title="Чатыг устгах"><Trash2/></button> : null}</div>;
       })}</div>}
     </aside>
     <div className={`${styles.messagePanel} ${mobileConversationOpen ? styles.mobileMessageOpen : ""}`}>
@@ -198,7 +215,7 @@ export function ChatClient() {
         </div>;
       })}</div>
       {error ? <p className={styles.chatError}>{error}</p> : null}
-      <form className={styles.composer} onSubmit={send}>{pendingFile ? <div className={styles.pendingFile}><span>{pendingFile.type.startsWith("audio/") ? "Voice: " : "Файл: "}{pendingFile.name}</span><button type="button" onClick={() => setPendingFile(null)}><X/></button></div> : null}<div className={styles.composerRow}><div className={styles.mediaActions}><label title="Зураг эсвэл файл"><Paperclip/><input type="file" accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><label title="Камераар зураг авах"><Camera/><input type="file" accept="image/*" capture="environment" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><button type="button" className={recording ? styles.recordingButton : ""} onClick={() => void toggleRecording()} title="Voice бичих">{recording ? <Square/> : <Mic/>}</button></div><textarea id="chat_message" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={recording ? "Voice бичиж байна..." : "Aa"} rows={1}/><button type="submit" aria-label="Илгээх" disabled={(!draft.trim() && !pendingFile) || sending}>{sending ? <span className={styles.sendingLabel}>...</span> : <Send/>}</button></div></form>
+      <form className={styles.composer} onSubmit={send}>{pendingFile ? <div className={styles.pendingFile}><span>{pendingFile.type.startsWith("audio/") ? "Voice: " : "Файл: "}{pendingFile.name}</span><button type="button" onClick={() => setPendingFile(null)}><X/></button></div> : null}<div className={styles.composerRow}><div className={styles.mediaActions}><label title="Зураг эсвэл файл"><Paperclip/><input type="file" accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><label title="Камераар зураг авах"><Camera/><input type="file" accept="image/*" capture="environment" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><button type="button" className={recording ? styles.recordingButton : ""} onClick={() => void toggleRecording()} title="Voice бичих">{recording ? <Square/> : <Mic/>}</button></div><textarea id="chat_message" value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={submitOnEnter} placeholder={recording ? "Voice бичиж байна..." : "Aa"} rows={1}/><button type="submit" aria-label="Илгээх" disabled={(!draft.trim() && !pendingFile) || sending}>{sending ? <span className={styles.sendingLabel}>...</span> : <Send/>}</button></div><small className={styles.composerHint}>Enter — илгээх · Shift+Enter — шинэ мөр</small></form>
     </div>
     <aside className={styles.detailsPanel}><span className={styles.detailsAvatar}>{directMember?.photoUrl ? <img src={directMember.photoUrl} alt=""/> : active?.type === "group" || active?.type === "general" ? <Users/> : initials(active ? conversationName(active) : "Ч")}</span><h2>{active ? conversationName(active) : "Чат"}</h2><p>{active?.description || "Байгууллагын дотоод харилцаа"}</p><div className={styles.detailsStatus}><i/><span>{directMember && snapshot.onlineUserIds.includes(directMember.id) ? "Одоо идэвхтэй" : `${activeMembers.length || 0} гишүүн`}</span></div><section><strong>Чатын мэдээлэл</strong><span>Нийт зурвас <b>{messages.length}</b></span><span>Оролцогч <b>{activeMembers.length}</b></span></section>{activeMembers.length ? <section className={styles.memberPreview}><strong>Гишүүд</strong>{activeMembers.slice(0, 5).map((member) => <span key={member.id}><i>{member.photoUrl ? <img src={member.photoUrl} alt=""/> : initials(member.name)}</i><em>{member.name}</em></span>)}</section> : null}</aside>
     {showCreate ? <div className={styles.modalBackdrop}><div className={styles.chatModal} role="dialog" aria-modal="true" aria-label="Шинэ чат"><div className={styles.modalHeader}><div><strong>Шинэ чат эсвэл групп</strong><span>Ажилтнуудаа сонгоно уу</span></div><button type="button" className={styles.iconButton} onClick={() => setShowCreate(false)}><X /></button></div>

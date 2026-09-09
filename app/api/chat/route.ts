@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { getSessionRoleLabel, requireSession } from "@/lib/auth";
-import { addChatMessage, createChatConversation, deleteChatMessage, getChatRecipientIds, getChatSnapshot, markChatRead, updateChatPresence } from "@/lib/chat-store";
+import { addChatMessage, createChatConversation, deleteChatConversation, deleteChatMessage, getChatRecipientIds, getChatSnapshot, markChatRead, updateChatPresence } from "@/lib/chat-store";
 import { loadHrEmployeeDirectory } from "@/lib/odoo";
 import { notifyPushEvent } from "@/lib/push-notifications";
 
@@ -59,6 +59,11 @@ export async function POST(request: Request) {
     if (input.action === "delete" && input.messageId) {
       const message = await deleteChatMessage(session.uid, input.messageId);
       if (message.attachment?.id) await fs.unlink(path.join(process.cwd(), "data", "chat-media", message.attachment.id)).catch(() => undefined);
+      return Response.json({ ok: true });
+    }
+    if (input.action === "delete-conversation" && input.conversationId) {
+      const result = await deleteChatConversation(session.uid, input.conversationId);
+      await Promise.all(result.attachmentIds.map((id) => fs.unlink(path.join(process.cwd(), "data", "chat-media", id)).catch(() => undefined)));
       return Response.json({ ok: true });
     }
     if (input.action === "message" && input.conversationId) {

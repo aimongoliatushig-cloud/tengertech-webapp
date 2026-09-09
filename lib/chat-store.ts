@@ -160,6 +160,23 @@ export async function deleteChatMessage(userId: number, messageId: string) {
   });
 }
 
+export async function deleteChatConversation(userId: number, conversationId: string) {
+  return mutate((store) => {
+    const index = store.conversations.findIndex((conversation) => conversation.id === conversationId);
+    if (index < 0) throw new Error("CHAT_CONVERSATION_NOT_FOUND");
+    const conversation = store.conversations[index];
+    if (conversation.type === "general") throw new Error("CHAT_DELETE_DENIED");
+    if (!canAccess(conversation, userId)) throw new Error("CHAT_ACCESS_DENIED");
+    if (conversation.type === "group" && conversation.createdBy !== userId) throw new Error("CHAT_DELETE_DENIED");
+    const attachments = store.messages
+      .filter((message) => message.conversationId === conversationId && message.attachment)
+      .map((message) => message.attachment!.id);
+    store.messages = store.messages.filter((message) => message.conversationId !== conversationId);
+    store.conversations.splice(index, 1);
+    return { conversation, attachmentIds: attachments };
+  });
+}
+
 export async function canAccessChatAttachment(userId: number, attachmentId: string) {
   const store = await readStore();
   const message = store.messages.find((item) => item.attachment?.id === attachmentId);
