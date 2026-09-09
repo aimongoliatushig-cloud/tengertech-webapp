@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Camera, FileText, MessageCirclePlus, Mic, Paperclip, Search, Square, Trash2, Users, X } from "lucide-react";
+import { ArrowLeft, Camera, FileText, Info, MessageCirclePlus, Mic, Paperclip, Search, Send, Square, Trash2, Users, X } from "lucide-react";
 import styles from "./chat.module.css";
 
 type Employee = { id: number; name: string; department: string; jobTitle: string; photoUrl: string };
@@ -9,6 +9,14 @@ type Conversation = { id: string; type: "general" | "direct" | "group"; name: st
 type Attachment = { id: string; name: string; mimeType: string; size: number };
 type ChatMessage = { id: string; conversationId: string; authorId: number; author: string; roleLabel: string; body: string; sentAt: string; readBy: number[]; attachment?: Attachment };
 type Snapshot = { conversations: Conversation[]; messages: ChatMessage[]; employees: Employee[]; currentUserId: number; onlineUserIds: number[] };
+
+function initials(name: string) {
+  return name.trim().split(/\s+/).map((part) => part[0]).join("").slice(-2).toUpperCase();
+}
+
+function formatMessageTime(value: string) {
+  return new Intl.DateTimeFormat("mn-MN", { hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
 
 export function ChatClient() {
   const [snapshot, setSnapshot] = useState<Snapshot>({ conversations: [], messages: [], employees: [], currentUserId: 0, onlineUserIds: [] });
@@ -60,6 +68,8 @@ export function ChatClient() {
 
   const active = snapshot.conversations.find((item) => item.id === activeId) ?? snapshot.conversations[0];
   const messages = useMemo(() => snapshot.messages.filter((item) => item.conversationId === active?.id), [snapshot.messages, active?.id]);
+  const activeMembers = useMemo(() => snapshot.employees.filter((employee) => active?.memberIds.includes(employee.id)), [active?.memberIds, snapshot.employees]);
+  const directMember = active?.type === "direct" ? activeMembers.find((employee) => employee.id !== snapshot.currentUserId) : undefined;
   const filteredEmployees = useMemo(
     () => snapshot.employees.filter(
       (item) =>
@@ -158,6 +168,7 @@ export function ChatClient() {
 
   return <section className={styles.chatShell}>
     <aside className={`${styles.conversationPanel} ${mobileConversationOpen ? styles.mobileListHidden : ""}`}>
+      <div className={styles.conversationTitle}><div><h1>Чат</h1><span>Хамт олонтойгоо холбогдох</span></div><button type="button" onClick={() => setShowCreate(true)} aria-label="Шинэ чат"><MessageCirclePlus/></button></div>
       <div className={styles.directoryTabs}><button type="button" className={sidebarTab === "employees" ? styles.directoryTabActive : ""} onClick={() => setSidebarTab("employees")}>Албан хаагч</button><button type="button" className={sidebarTab === "groups" ? styles.directoryTabActive : ""} onClick={() => setSidebarTab("groups")}>Бүлэг</button></div>
       <label className={styles.directorySearch}><Search/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Хайх..."/></label>
       <div className={styles.directoryStats}><span>Нийт: <strong>{filteredEmployees.length}</strong></span><span>Идэвхтэй: <strong>{snapshot.onlineUserIds.filter((id) => id !== snapshot.currentUserId).length}</strong></span>{sidebarTab === "groups" ? <button type="button" onClick={() => setShowCreate(true)}><MessageCirclePlus/> Бүлэг үүсгэх</button> : null}</div>
@@ -166,14 +177,14 @@ export function ChatClient() {
         const last = snapshot.messages.filter((message) => message.conversationId === item.id).at(-1);
         const unread = snapshot.messages.filter((message) => message.conversationId === item.id && !message.readBy.includes(snapshot.currentUserId)).length;
         return <button key={item.id} type="button" className={`${styles.conversationButton} ${item.id === active?.id ? styles.conversationButtonActive : ""}`} onClick={() => { setActiveId(item.id); setMobileConversationOpen(true); }}>
-          <span className={styles.conversationAvatar}>{item.type === "group" || item.type === "general" ? <Users /> : conversationName(item).slice(0, 1)}</span>
+          <span className={styles.conversationAvatar}>{item.type === "group" || item.type === "general" ? <Users /> : initials(conversationName(item))}</span>
           <span className={styles.conversationCopy}><strong>{conversationName(item)}</strong><small>{last?.body || item.description}</small></span>
           {unread > 0 ? <span className={styles.conversationCount}>{unread}</span> : null}
         </button>;
       })}</div>}
     </aside>
     <div className={`${styles.messagePanel} ${mobileConversationOpen ? styles.mobileMessageOpen : ""}`}>
-      <header className={styles.messageHeader}><button type="button" className={styles.mobileBackButton} onClick={() => setMobileConversationOpen(false)} aria-label="Чатын жагсаалт руу буцах"><ArrowLeft /></button><div><span>{active?.description || "Чат сонгоно уу"}</span><h2>{active ? conversationName(active) : "Харилцаа холбоо"}</h2></div><strong>{messages.length} зурвас</strong></header>
+      <header className={styles.messageHeader}><button type="button" className={styles.mobileBackButton} onClick={() => setMobileConversationOpen(false)} aria-label="Чатын жагсаалт руу буцах"><ArrowLeft /></button><span className={styles.headerAvatar}>{directMember?.photoUrl ? <img src={directMember.photoUrl} alt=""/> : active?.type === "group" || active?.type === "general" ? <Users/> : initials(active ? conversationName(active) : "Ч")}</span><div className={styles.headerIdentity}><h2>{active ? conversationName(active) : "Харилцаа холбоо"}</h2><span>{directMember && snapshot.onlineUserIds.includes(directMember.id) ? "Идэвхтэй" : active?.description || "Чат сонгоно уу"}</span></div><button type="button" className={styles.headerInfoButton} aria-label="Чатын мэдээлэл"><Info/></button></header>
       <div className={styles.messageList}>{messages.map((message) => {
         const author = snapshot.employees.find((employee) => employee.id === message.authorId);
         const own = message.authorId === snapshot.currentUserId;
@@ -181,13 +192,15 @@ export function ChatClient() {
           <span className={styles.messageAvatar}>{author?.photoUrl ? <img src={author.photoUrl} alt=""/> : null}</span>
           <article className={`${styles.messageBubble} ${own ? styles.messageBubbleOwn : ""}`}>
             {own ? <button type="button" className={styles.deleteMessageButton} onClick={() => void removeMessage(message.id)} aria-label="Зурвас устгах" title="Устгах"><Trash2/></button> : null}
-            {message.attachment ? attachmentView(message.attachment) : null}{message.body ? <p>{message.body}</p> : null}
+            {!own && active?.type !== "direct" ? <strong className={styles.messageAuthor}>{message.author}</strong> : null}
+            {message.attachment ? attachmentView(message.attachment) : null}{message.body ? <p>{message.body}</p> : null}<time>{formatMessageTime(message.sentAt)}{own ? " · Илгээгдсэн" : ""}</time>
           </article>
         </div>;
       })}</div>
       {error ? <p className={styles.chatError}>{error}</p> : null}
-      <form className={styles.composer} onSubmit={send}>{pendingFile ? <div className={styles.pendingFile}><span>{pendingFile.type.startsWith("audio/") ? "Voice: " : "Файл: "}{pendingFile.name}</span><button type="button" onClick={() => setPendingFile(null)}><X/></button></div> : null}<div className={styles.composerRow}><div className={styles.mediaActions}><label title="Зураг эсвэл файл"><Paperclip/><input type="file" accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><label title="Камераар зураг авах"><Camera/><input type="file" accept="image/*" capture="environment" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><button type="button" className={recording ? styles.recordingButton : ""} onClick={() => void toggleRecording()} title="Voice бичих">{recording ? <Square/> : <Mic/>}</button></div><textarea id="chat_message" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={recording ? "Voice бичиж байна..." : "Зурвасаа бичнэ үү"} rows={2}/><button type="submit" disabled={(!draft.trim() && !pendingFile) || sending}>{sending ? "Илгээж байна..." : "Илгээх"}</button></div></form>
+      <form className={styles.composer} onSubmit={send}>{pendingFile ? <div className={styles.pendingFile}><span>{pendingFile.type.startsWith("audio/") ? "Voice: " : "Файл: "}{pendingFile.name}</span><button type="button" onClick={() => setPendingFile(null)}><X/></button></div> : null}<div className={styles.composerRow}><div className={styles.mediaActions}><label title="Зураг эсвэл файл"><Paperclip/><input type="file" accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><label title="Камераар зураг авах"><Camera/><input type="file" accept="image/*" capture="environment" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><button type="button" className={recording ? styles.recordingButton : ""} onClick={() => void toggleRecording()} title="Voice бичих">{recording ? <Square/> : <Mic/>}</button></div><textarea id="chat_message" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={recording ? "Voice бичиж байна..." : "Aa"} rows={1}/><button type="submit" aria-label="Илгээх" disabled={(!draft.trim() && !pendingFile) || sending}>{sending ? <span className={styles.sendingLabel}>...</span> : <Send/>}</button></div></form>
     </div>
+    <aside className={styles.detailsPanel}><span className={styles.detailsAvatar}>{directMember?.photoUrl ? <img src={directMember.photoUrl} alt=""/> : active?.type === "group" || active?.type === "general" ? <Users/> : initials(active ? conversationName(active) : "Ч")}</span><h2>{active ? conversationName(active) : "Чат"}</h2><p>{active?.description || "Байгууллагын дотоод харилцаа"}</p><div className={styles.detailsStatus}><i/><span>{directMember && snapshot.onlineUserIds.includes(directMember.id) ? "Одоо идэвхтэй" : `${activeMembers.length || 0} гишүүн`}</span></div><section><strong>Чатын мэдээлэл</strong><span>Нийт зурвас <b>{messages.length}</b></span><span>Оролцогч <b>{activeMembers.length}</b></span></section>{activeMembers.length ? <section className={styles.memberPreview}><strong>Гишүүд</strong>{activeMembers.slice(0, 5).map((member) => <span key={member.id}><i>{member.photoUrl ? <img src={member.photoUrl} alt=""/> : initials(member.name)}</i><em>{member.name}</em></span>)}</section> : null}</aside>
     {showCreate ? <div className={styles.modalBackdrop}><div className={styles.chatModal} role="dialog" aria-modal="true" aria-label="Шинэ чат"><div className={styles.modalHeader}><div><strong>Шинэ чат эсвэл групп</strong><span>Ажилтнуудаа сонгоно уу</span></div><button type="button" className={styles.iconButton} onClick={() => setShowCreate(false)}><X /></button></div>
       <label className={styles.searchBox}><Search/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Нэр, хэлтэс, албан тушаал..."/></label>
       {selected.length > 1 ? <input className={styles.groupNameInput} value={groupName} onChange={(event) => setGroupName(event.target.value)} placeholder="Группийн нэр"/> : null}
