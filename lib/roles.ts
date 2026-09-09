@@ -244,10 +244,12 @@ export function isGarbageDepartmentHead(context: RoleContext, departmentName?: s
 }
 
 export function canAccessAutoBaseOverview(context: RoleContext, departmentName?: string | null) {
+  const groupFlags = normalizeGroupFlags(context.groupFlags);
   return Boolean(
     isSystemAdmin(context) ||
       isExecutiveContext(context) ||
-      isGarbageDepartmentHead(context, departmentName)
+      isGarbageDepartmentHead(context, departmentName) ||
+      groupFlags.opsStorekeeper
   );
 }
 

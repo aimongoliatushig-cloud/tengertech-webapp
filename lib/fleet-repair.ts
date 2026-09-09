@@ -531,6 +531,7 @@ export function getFleetRepairPermissions(session: AppSession): FleetRepairPermi
   const isRepairPurchaser = Boolean(groupFlags?.fleetRepairPurchaser);
   const isRepairGeneralManager = Boolean(groupFlags?.fleetRepairGeneralManager);
   const isRepairCeo = Boolean(groupFlags?.fleetRepairCeo);
+  const isOperationsStorekeeper = Boolean(groupFlags?.opsStorekeeper);
   const isTransportOps = Boolean(
     groupFlags?.mfoManager || groupFlags?.mfoDispatcher || groupFlags?.mfoInspector,
   );
@@ -540,6 +541,7 @@ export function getFleetRepairPermissions(session: AppSession): FleetRepairPermi
       isAdmin ||
       isManager ||
       isTransportOps ||
+      isOperationsStorekeeper ||
       isRepairManager ||
       isRepairMechanic ||
       isRepairTeamLeader,
