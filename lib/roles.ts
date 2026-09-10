@@ -249,7 +249,9 @@ export function canAccessAutoBaseOverview(context: RoleContext, departmentName?:
     isSystemAdmin(context) ||
       isExecutiveContext(context) ||
       isGarbageDepartmentHead(context, departmentName) ||
-      groupFlags.opsStorekeeper
+      groupFlags.opsStorekeeper ||
+      groupFlags.procurementStorekeeper ||
+      groupFlags.fleetRepairPurchaser
   );
 }
 
