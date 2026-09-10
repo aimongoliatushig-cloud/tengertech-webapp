@@ -793,6 +793,16 @@ export function AppMenu({
             label: "Худалдан авалт",
             icon: ShoppingCart,
           },
+          ...(canOpenAutoBase
+            ? [
+                {
+                  key: "auto-base-board" as const,
+                  href: "/auto-base",
+                  label: "Авто бааз",
+                  icon: Truck,
+                },
+              ]
+            : []),
         ]
       : []),
     ...(workerMode && mfoFieldMode && !procurementWorkerMode
@@ -854,7 +864,11 @@ export function AppMenu({
     ...hrItems,
     ...roleFocusedItems,
     ...departmentItems,
-    ...(canOpenAutoBase && !hasNestedAutoBaseMenu ? [autoBaseMenuItem] : []),
+    ...(canOpenAutoBase &&
+    !hasNestedAutoBaseMenu &&
+    !roleFocusedItems.some((item) => item.key === "auto-base-board")
+      ? [autoBaseMenuItem]
+      : []),
     ...(!workerMode || canCreateTasks
       ? [
           {
@@ -1663,6 +1677,16 @@ export function AppMenu({
                     label: "Х.Авалтууд",
                     icon: ShoppingCart,
                   },
+                  ...(canOpenAutoBase
+                    ? [
+                        {
+                          key: "auto-base-board" as const,
+                          href: "/auto-base",
+                          label: "Авто бааз",
+                          icon: Truck,
+                        },
+                      ]
+                    : []),
                   {
                     key: "review",
                     href: "/notifications",
