@@ -482,10 +482,9 @@ export function AppMenu({
   const repairFieldMode =
     workerMode &&
     Boolean(flags.fleetRepairMechanic || flags.fleetRepairTeamLeader);
-  const canOpenAutoBase = canAccessAutoBaseOverview(
-    roleContext,
-    departmentScopeName,
-  );
+  const canOpenAutoBase =
+    canAccessAutoBaseOverview(roleContext, departmentScopeName) ||
+    roleLabelLower.includes("нярав");
   const canOpenGarbageSettings = canAccessGarbageTransportSettings(
     roleContext,
     departmentScopeName,
