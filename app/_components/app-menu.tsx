@@ -1020,6 +1020,9 @@ export function AppMenu({
     if (item.key === "procurement") {
       return showProcurement;
     }
+    if (item.key === "auto-base-board") {
+      return canOpenAutoBase;
+    }
     if (mfoFieldMode) {
       return [
         "dashboard",
