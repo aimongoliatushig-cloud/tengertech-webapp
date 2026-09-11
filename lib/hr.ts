@@ -676,6 +676,7 @@ const DEPARTMENT_HEAD_TEXT_TOKENS = [
   "department head",
   "department manager",
 ];
+const ADMINISTRATION_DEPARTMENT_HEAD_TEXT_TOKEN = "захиргааны албаны дарга";
 
 function getRelationId(relation?: OdooRelation) {
   return Array.isArray(relation) ? relation[0] : null;
@@ -1628,6 +1629,8 @@ export async function getHrAccessProfile(session: AppSession) {
 
   const hasExecutiveHrScope = Boolean(
     EXECUTIVE_HR_SCOPE_ROLES.has(sessionRole) ||
+      containsAnyText(jobName, [ADMINISTRATION_DEPARTMENT_HEAD_TEXT_TOKEN]) ||
+      containsAnyText(employee?.job_title, [ADMINISTRATION_DEPARTMENT_HEAD_TEXT_TOKEN]) ||
       session.groupFlags?.municipalDirector ||
       session.groupFlags?.fleetRepairCeo ||
       session.groupFlags?.fleetRepairGeneralManager ||
