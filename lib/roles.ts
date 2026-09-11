@@ -255,6 +255,15 @@ export function canAccessAutoBaseOverview(context: RoleContext, departmentName?:
   );
 }
 
+export function isAdministrationDepartmentHead(context: RoleContext) {
+  const jobTitle = normalizePermissionText(context.employeeJobTitle);
+  return (
+    jobTitle.includes("захиргааны") &&
+    jobTitle.includes("албаны") &&
+    jobTitle.includes("дарга")
+  );
+}
+
 export function canAccessGarbageTransportSettings(
   context: RoleContext,
   departmentName?: string | null,
@@ -271,6 +280,9 @@ export function canAccessGarbageTransportSettings(
 }
 
 export function canAccessProcurementModule(context: RoleContext) {
+  if (isAdministrationDepartmentHead(context)) {
+    return false;
+  }
   const groupFlags = normalizeGroupFlags(context.groupFlags);
   return Boolean(
     isSystemAdmin(context) ||
@@ -479,6 +491,9 @@ export function canSubmitWorkspaceReport(_context: RoleContext) {
 }
 
 export function canDeleteWorkspaceItems(context: RoleContext) {
+  if (isAdministrationDepartmentHead(context)) {
+    return false;
+  }
   const groupFlags = normalizeGroupFlags(context.groupFlags);
   return Boolean(
     context.role === "director" ||

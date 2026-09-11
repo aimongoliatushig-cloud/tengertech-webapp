@@ -52,6 +52,7 @@ import {
   canAccessGarbageTransportSettings,
   canAccessProcurementModule,
   canViewGarbageWeightReports as canViewGarbageWeightReportsForContext,
+  isAdministrationDepartmentHead,
   isGarbageDepartmentHead as isGarbageDepartmentHeadRole,
   isRecordsClerk,
   isReportPlanningSpecialist,
@@ -491,6 +492,8 @@ export function AppMenu({
   );
   const canOpenGeneralSettings = roleContext.role === "system_admin";
   const canOpenProcurement = canAccessProcurementModule(roleContext);
+  const administrationDepartmentHeadMode =
+    isAdministrationDepartmentHead(roleContext);
   const procurementMode = Boolean(
     roleLooksProcurementParticipant ||
     flags.opsStorekeeper ||
@@ -528,16 +531,16 @@ export function AppMenu({
     resolvedRole === "project_manager" ||
     flags.municipalDepartmentHead,
   );
-  const showProcurement =
-    canOpenProcurement ||
-    procurementMode ||
-    roleLooksProcurementParticipant ||
-    executiveMode ||
-    Boolean(
-      flags.municipalDepartmentHead ||
-      flags.municipalManager ||
-      flags.municipalDirector,
-    );
+  const showProcurement = Boolean(
+    !administrationDepartmentHeadMode &&
+      (canOpenProcurement ||
+        procurementMode ||
+        roleLooksProcurementParticipant ||
+        executiveMode ||
+        flags.municipalDepartmentHead ||
+        flags.municipalManager ||
+        flags.municipalDirector),
+  );
   const procurementWorkerMode = Boolean(
     workerMode &&
     showProcurement &&
