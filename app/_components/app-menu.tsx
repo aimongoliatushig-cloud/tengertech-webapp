@@ -185,7 +185,7 @@ function isHiddenDepartmentMenu(group: DepartmentGroupDefinition) {
 }
 
 function isHiddenMenuItem(item: MenuItem) {
-  return item.key === "shared-work" || item.key.startsWith("shared-work-");
+  return item.key === "data-download" || item.key === "shared-work" || item.key.startsWith("shared-work-");
 }
 
 function getDepartmentMenuIcon(group: DepartmentGroupDefinition): LucideIcon {
