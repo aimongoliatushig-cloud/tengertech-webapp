@@ -392,7 +392,13 @@ function resolveDisplayRoleLabel(
   preserveJobTitle = false,
 ) {
   const trimmedJobTitle = employeeJobTitle?.trim();
-  if ((role === "worker" || preserveJobTitle) && trimmedJobTitle) {
+  const administrationDepartmentHead = Boolean(
+    trimmedJobTitle?.toLocaleLowerCase("mn-MN").includes("захиргааны албаны дарга"),
+  );
+  if (
+    (role === "worker" || preserveJobTitle || administrationDepartmentHead) &&
+    trimmedJobTitle
+  ) {
     return trimmedJobTitle;
   }
   if (preserveJobTitle) {
@@ -407,6 +413,14 @@ export function getSessionRoleLabel(
 ) {
   if (session.role === "general_manager") {
     return getRoleLabel("general_manager");
+  }
+
+  if (
+    session.employeeJobTitle
+      ?.toLocaleLowerCase("mn-MN")
+      .includes("захиргааны албаны дарга")
+  ) {
+    return session.employeeJobTitle.trim();
   }
 
   return session.displayRoleLabel || resolveDisplayRoleLabel(session.role, session.employeeJobTitle);
