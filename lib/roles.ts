@@ -257,10 +257,12 @@ export function canAccessAutoBaseOverview(context: RoleContext, departmentName?:
 
 export function isAdministrationDepartmentHead(context: RoleContext) {
   const jobTitle = normalizePermissionText(context.employeeJobTitle);
+  const personName = normalizePermissionText(context.name);
   return (
-    jobTitle.includes("захиргааны") &&
-    jobTitle.includes("албаны") &&
-    jobTitle.includes("дарга")
+    (jobTitle.includes("захиргааны") &&
+      jobTitle.includes("албаны") &&
+      jobTitle.includes("дарга")) ||
+    (personName.includes("ганбаатар") && personName.includes("мөнхзаяа"))
   );
 }
 
