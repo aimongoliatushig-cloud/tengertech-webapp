@@ -1581,6 +1581,10 @@ export async function getHrAccessProfile(session: AppSession) {
 
   const jobName = getHrJobTitleDisplayName(employee?.name || session.name, getRelationName(employee?.job_id) || employee?.job_title);
   const departmentName = getRelationName(employee?.department_id);
+  const isAdministrationDepartmentHead = Boolean(
+    containsAnyText(jobName, [ADMINISTRATION_DEPARTMENT_HEAD_TEXT_TOKEN]) ||
+      containsAnyText(employee?.job_title, [ADMINISTRATION_DEPARTMENT_HEAD_TEXT_TOKEN]),
+  );
   const roleKeys = [
     employee?.x_role_key,
     employee?.x_hr_role,
@@ -1626,11 +1630,13 @@ export async function getHrAccessProfile(session: AppSession) {
   if (roleKeys.some(isHrRoleKey)) {
     reasons.push("custom role key");
   }
+  if (isAdministrationDepartmentHead) {
+    reasons.push("administration department head HR management scope");
+  }
 
   const hasExecutiveHrScope = Boolean(
     EXECUTIVE_HR_SCOPE_ROLES.has(sessionRole) ||
-      containsAnyText(jobName, [ADMINISTRATION_DEPARTMENT_HEAD_TEXT_TOKEN]) ||
-      containsAnyText(employee?.job_title, [ADMINISTRATION_DEPARTMENT_HEAD_TEXT_TOKEN]) ||
+      isAdministrationDepartmentHead ||
       session.groupFlags?.municipalDirector ||
       session.groupFlags?.fleetRepairCeo ||
       session.groupFlags?.fleetRepairGeneralManager ||
