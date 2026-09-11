@@ -3305,8 +3305,12 @@ export async function updateEmployee(
   if (fields.has("sex") && (data.genderKey !== undefined || data.gender !== undefined)) {
     values.sex = data.genderKey || data.gender || false;
   }
-  if (fields.has("marital") && (data.familyStatus !== undefined || data.maritalStatus !== undefined)) {
-    values.marital = toMaritalKey(data.familyStatus || data.maritalStatus);
+  const maritalStatus = data.familyStatus || data.maritalStatus;
+  // Odoo's `marital` field is required in this database. Some legacy employees
+  // have no value yet, so an untouched optional form field must not be written
+  // back as `false`, otherwise every other profile change is rejected.
+  if (fields.has("marital") && maritalStatus) {
+    values.marital = toMaritalKey(maritalStatus);
   }
   if (fields.has("spouse_complete_name") && data.spouseName !== undefined) {
     values.spouse_complete_name = data.spouseName || false;
