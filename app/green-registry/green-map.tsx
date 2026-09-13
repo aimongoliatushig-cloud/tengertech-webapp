@@ -43,10 +43,12 @@ export function GreenRegistryMap({ locations }: { locations: GreenRegistryLocati
   return <div ref={containerRef} className={styles.mapCanvas} aria-label="Ногоон байгууламжийн байршлын газрын зураг" />;
 }
 
-export function GreenLocationPicker() {
+export function GreenLocationPicker({ initialLatitude = 0, initialLongitude = 0 }: { initialLatitude?: number; initialLongitude?: number }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const markerRef = useRef<import("leaflet").Marker | null>(null);
-  const [position, setPosition] = useState<{ latitude:number; longitude:number } | null>(null);
+  const [position, setPosition] = useState<{ latitude:number; longitude:number } | null>(
+    initialLatitude && initialLongitude ? { latitude:initialLatitude, longitude:initialLongitude } : null,
+  );
 
   useEffect(() => {
     let disposed = false;
@@ -54,8 +56,11 @@ export function GreenLocationPicker() {
     (async () => {
       const L = (await import("leaflet")).default;
       if (disposed || !containerRef.current) return;
-      const map = L.map(containerRef.current, { center: DEFAULT_CENTER, zoom: 12, scrollWheelZoom: true });
+      const initialPosition = initialLatitude && initialLongitude ? { latitude:initialLatitude, longitude:initialLongitude } : null;
+      const center: [number,number] = initialPosition ? [initialPosition.latitude, initialPosition.longitude] : DEFAULT_CENTER;
+      const map = L.map(containerRef.current, { center, zoom: initialPosition ? 16 : 12, scrollWheelZoom: true });
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution:'&copy; OpenStreetMap', maxZoom:19 }).addTo(map);
+      if (initialPosition) markerRef.current = L.marker(center).addTo(map);
       map.on("click", (event: import("leaflet").LeafletMouseEvent) => {
         const next = { latitude:Number(event.latlng.lat.toFixed(7)), longitude:Number(event.latlng.lng.toFixed(7)) };
         setPosition(next);
@@ -65,7 +70,7 @@ export function GreenLocationPicker() {
       cleanup = () => map.remove();
     })();
     return () => { disposed = true; cleanup?.(); markerRef.current = null; };
-  }, []);
+  }, [initialLatitude, initialLongitude]);
 
   return <div className={styles.picker}>
     <input type="hidden" name="latitude" value={position?.latitude ?? ""}/>

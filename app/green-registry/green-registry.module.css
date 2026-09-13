@@ -24,6 +24,10 @@
 .compactList { display:grid; border:1px solid #e4ece6; border-radius:12px; overflow:hidden; }
 .compactList>div { display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border-top:1px solid #edf2ee; font-size:13px; }.compactList>div:first-child{border-top:0}
 .compactList span { display:grid; gap:2px; }.compactList small{color:#748078}.compactList strong{color:#16723a;white-space:nowrap}.empty{margin:0;color:#7a877f;font-size:13px}
+.locationActions { display:flex!important; align-items:flex-end; justify-content:center; gap:7px; }
+.editLink { display:inline-flex; border:1px solid #bcd8c5; border-radius:8px; padding:5px 9px; color:#126d36; background:#f4faf6; font-size:12px; font-weight:800; text-decoration:none; }
+.editLink:hover { background:#e5f4e9; }
+.backLink { color:#176f39; font-size:13px; font-weight:800; text-decoration:none; }
 .forms { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 .panel { border:1px solid #dbe8df; border-radius:18px; background:#fff; padding:20px; }
 .panel h2 { margin:0 0 4px; font-size:19px; }

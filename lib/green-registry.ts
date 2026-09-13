@@ -56,6 +56,7 @@ export type GreenRegistryLocation = {
   code: string;
   locationType: string;
   departmentName: string;
+  responsibleEmployeeId: number | null;
   responsibleEmployeeName: string;
   district: string;
   khoroo: string;
@@ -132,7 +133,8 @@ export async function loadGreenRegistry(session: AppSession) {
   return {
     locations: locations.map((row): GreenRegistryLocation => ({
       id: row.id, name: row.name, code: String(row.code || ""), locationType: row.location_type || "other",
-      departmentName: row.department_id ? row.department_id[1] : "", responsibleEmployeeName: row.responsible_employee_id ? row.responsible_employee_id[1] : "",
+      departmentName: row.department_id ? row.department_id[1] : "", responsibleEmployeeId: row.responsible_employee_id ? row.responsible_employee_id[0] : null,
+      responsibleEmployeeName: row.responsible_employee_id ? row.responsible_employee_id[1] : "",
       district: String(row.district || ""), khoroo: String(row.khoroo || ""), address: String(row.address || ""),
       latitude: Number(row.gps_latitude || 0), longitude: Number(row.gps_longitude || 0), areaSize: Number(row.area_size || 0),
       areaUnit: String(row.area_unit || "м²"), active: row.active !== false,
@@ -157,6 +159,10 @@ export async function createGreenLocation(session: AppSession, values: Record<st
   const departments = await call<Array<{ id: number }>>(session, "hr.department", "search_read", [[["name", "ilike", "Ногоон байгууламж"]]], { fields: ["id"], limit: 1 });
   if (!departments[0]?.id) throw new Error("Ногоон байгууламжийн хэлтэс олдсонгүй.");
   return call<number>(session, "municipal.green.location", "create", [{ ...values, department_id: departments[0].id }]);
+}
+
+export async function updateGreenLocation(session: AppSession, id: number, values: Record<string, unknown>) {
+  return call<boolean>(session, "municipal.green.location", "write", [[id], values]);
 }
 
 export async function createGreenAsset(session: AppSession, values: Record<string, unknown>) {

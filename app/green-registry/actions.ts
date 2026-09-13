@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
-import { createGreenActivity, createGreenAsset, createGreenLocation } from "@/lib/green-registry";
+import { createGreenActivity, createGreenAsset, createGreenLocation, updateGreenLocation } from "@/lib/green-registry";
 
 function text(form: FormData, key: string) { return String(form.get(key) || "").trim(); }
 function number(form: FormData, key: string) { const value = Number(form.get(key)); return Number.isFinite(value) ? value : 0; }
@@ -33,6 +33,33 @@ export async function createGreenLocationAction(formData: FormData) {
     });
     finish("Ногоон байгууламжийн байршил нэмэгдлээ.");
   } catch (error) { finish(error instanceof Error ? error.message : "Байршил хадгалахад алдаа гарлаа.", true); }
+}
+
+export async function updateGreenLocationAction(formData: FormData) {
+  const session = await requireSession();
+  const id = positiveId(formData, "id");
+  const name = text(formData, "name");
+  if (!id || !name) redirect(`/green-registry/${id || ""}?error=${encodeURIComponent("Байршлын нэр оруулна уу.")}`);
+  try {
+    await updateGreenLocation(session, id, {
+      name,
+      code: text(formData, "code") || false,
+      location_type: text(formData, "locationType") || "other",
+      district: text(formData, "district") || "Хан-Уул",
+      khoroo: text(formData, "khoroo") || false,
+      address: text(formData, "address") || false,
+      area_size: number(formData, "areaSize"),
+      area_unit: "м²",
+      gps_latitude: number(formData, "latitude"),
+      gps_longitude: number(formData, "longitude"),
+      responsible_employee_id: positiveId(formData, "responsibleEmployeeId"),
+    });
+  } catch (error) {
+    redirect(`/green-registry/${id}?error=${encodeURIComponent(error instanceof Error ? error.message : "Байршил шинэчлэхэд алдаа гарлаа.")}`);
+  }
+  revalidatePath("/green-registry");
+  revalidatePath(`/green-registry/${id}`);
+  redirect(`/green-registry?notice=${encodeURIComponent("Байршлын бүртгэл шинэчлэгдлээ.")}`);
 }
 
 export async function createGreenAssetAction(formData: FormData) {
