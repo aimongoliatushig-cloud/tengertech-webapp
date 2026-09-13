@@ -208,6 +208,18 @@ export async function setGreenLocationAssetQuantity(
   });
 }
 
+export async function setGreenLocationCompletedWorkQuantity(session: AppSession, locationId: number, quantity: number) {
+  const name = "2026 оны цэцэг тарих ажил — Цэцгийн мандал";
+  const existing = await call<Array<{ id: number }>>(session, "municipal.green.activity", "search_read", [[
+    ["location_id", "=", locationId],
+    ["activity_type", "=", "replanting"],
+    ["name", "=", name],
+  ]], { fields: ["id"], limit: 1 });
+  const values = { actual_quantity: quantity, unit: "ш", state: "done", report_note: `2026 онд хийсэн цэцэг тарих ажил: ${quantity} ширхэг.` };
+  if (existing[0]?.id) return call<boolean>(session, "municipal.green.activity", "write", [[existing[0].id], values]);
+  return createGreenActivity(session, { location_id: locationId, name, activity_type: "replanting", ...values, requires_photo: false });
+}
+
 export async function createGreenActivity(session: AppSession, values: Record<string, unknown>) {
   return call<number>(session, "municipal.green.activity", "create", [values]);
 }

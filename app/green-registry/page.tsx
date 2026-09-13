@@ -66,10 +66,13 @@ export default async function GreenRegistryPage({searchParams}:{searchParams?:Pr
                   const groupLocations=locations.filter(x=>x.assetGroup===group);
                   const groupIds=new Set(groupLocations.map(x=>x.id));
                   const groupAssets=assets.filter(x=>x.locationId!==null&&groupIds.has(x.locationId));
+                  const groupActivities=activities.filter(x=>x.locationId!==null&&groupIds.has(x.locationId));
                   const groupArea=groupLocations.reduce((sum,x)=>sum+x.areaSize,0);
                   return <details className={styles.assetGroup} key={group} open={group==="grass"&&groupLocations.length>0}><summary><b>{typeLabels[group]}</b><small>{groupLocations.length} байршил · {groupArea.toLocaleString("mn-MN")} м²</small></summary><div className={styles.assetGroupBody}>
                     {groupLocations.length?<div className={styles.compactList}>{groupLocations.map(x=>{
-                      const itemCount=groupAssets.filter(asset=>asset.locationId===x.id&&asset.unit==="ш").reduce((sum,asset)=>sum+asset.quantity,0);
+                      const inventoryCount=groupAssets.filter(asset=>asset.locationId===x.id&&asset.unit==="ш").reduce((sum,asset)=>sum+asset.quantity,0);
+                      const completedWorkCount=groupActivities.filter(activity=>activity.locationId===x.id&&activity.unit==="ш"&&activity.state==="done").reduce((sum,activity)=>sum+activity.actualQuantity,0);
+                      const itemCount=inventoryCount||completedWorkCount;
                       return <div key={x.id}><span><b>{x.code||"Кодгүй"} · {x.name}</b><small>{x.khoroo||"Хороо оруулаагүй"}{x.latitude&&x.longitude?` · GPS: ${x.latitude}, ${x.longitude}`:""}</small></span><span className={styles.locationActions}>{itemCount>0?<strong>Тоо: {itemCount.toLocaleString("mn-MN")} ш</strong>:null}<strong>Талбай: {x.areaSize.toLocaleString("mn-MN")} {x.areaUnit}</strong><Link href={`/green-registry/${x.id}`} className={styles.editLink}>Засах</Link></span></div>;
                     })}</div>:<p className={styles.empty}>Энэ бүлэгт байршлын бүртгэлгүй.</p>}
                     {group!=="flower"&&groupAssets.length?<div className={styles.groupAssets}>{groupAssets.map(x=><div key={x.id}><span>{typeLabels[x.assetType]||x.assetType} — <b>{x.name}</b>{x.species?` / ${x.species}`:""}</span><strong>{x.quantity.toLocaleString("mn-MN")} {x.unit}</strong></div>)}</div>:null}

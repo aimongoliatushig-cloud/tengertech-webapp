@@ -19,9 +19,13 @@ export default async function GreenLocationEditPage({ params, searchParams }:{ p
   const [{id}, data, departmentName] = await Promise.all([params, loadGreenRegistry(session), loadSessionDepartmentName(session)]);
   const location = data.locations.find((item) => item.id === Number(id));
   if (!location) notFound();
-  const itemCount = data.assets
+  const inventoryCount = data.assets
     .filter((asset) => asset.locationId === location.id && asset.assetType === location.assetGroup && asset.unit === "ш")
     .reduce((sum, asset) => sum + asset.quantity, 0);
+  const completedWorkCount = data.activities
+    .filter((activity) => activity.locationId === location.id && activity.unit === "ш" && activity.state === "done")
+    .reduce((sum, activity) => sum + activity.actualQuantity, 0);
+  const itemCount = inventoryCount || completedWorkCount;
   return <main className={shellStyles.shell}><div className={shellStyles.contentWithMenu}>
     <aside className={shellStyles.menuColumn}><AppMenu active="green-registry" canCreateProject={hasCapability(session,"create_projects")} canCreateTasks={hasCapability(session,"create_tasks")} canWriteReports={hasCapability(session,"write_workspace_reports")} userName={session.name} userRole={session.role} roleLabel={getSessionRoleLabel(session)} groupFlags={session.groupFlags} departmentScopeName={departmentName}/></aside>
     <div className={shellStyles.pageContent}><WorkspaceHeader title="Байршлын бүртгэл засах" subtitle={location.name} userName={session.name} roleLabel={getSessionRoleLabel(session)}/><div className={styles.page}>

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
-import { createGreenActivity, createGreenAsset, createGreenLocation, setGreenLocationAssetQuantity, updateGreenLocation } from "@/lib/green-registry";
+import { createGreenActivity, createGreenAsset, createGreenLocation, setGreenLocationAssetQuantity, setGreenLocationCompletedWorkQuantity, updateGreenLocation } from "@/lib/green-registry";
 
 function text(form: FormData, key: string) { return String(form.get(key) || "").trim(); }
 function hasValue(form: FormData, key: string) { return String(form.get(key) ?? "").trim() !== ""; }
@@ -35,7 +35,10 @@ export async function createGreenLocationAction(formData: FormData) {
     });
     const itemCount = number(formData, "itemCount");
     if (hasValue(formData, "itemCount") && itemCount >= 0) {
-      await setGreenLocationAssetQuantity(session, locationId, text(formData, "assetGroup") || "grass", itemCount);
+      const assetGroup = text(formData, "assetGroup") || "grass";
+      await (assetGroup === "flower"
+        ? setGreenLocationCompletedWorkQuantity(session, locationId, itemCount)
+        : setGreenLocationAssetQuantity(session, locationId, assetGroup, itemCount));
     }
     finish("Ногоон байгууламжийн байршил нэмэгдлээ.");
   } catch (error) { finish(error instanceof Error ? error.message : "Байршил хадгалахад алдаа гарлаа.", true); }
@@ -63,7 +66,10 @@ export async function updateGreenLocationAction(formData: FormData) {
     });
     const itemCount = number(formData, "itemCount");
     if (hasValue(formData, "itemCount") && itemCount >= 0) {
-      await setGreenLocationAssetQuantity(session, id, text(formData, "assetGroup") || "grass", itemCount);
+      const assetGroup = text(formData, "assetGroup") || "grass";
+      await (assetGroup === "flower"
+        ? setGreenLocationCompletedWorkQuantity(session, id, itemCount)
+        : setGreenLocationAssetQuantity(session, id, assetGroup, itemCount));
     }
   } catch (error) {
     redirect(`/green-registry/${id}?error=${encodeURIComponent(error instanceof Error ? error.message : "Байршил шинэчлэхэд алдаа гарлаа.")}`);
