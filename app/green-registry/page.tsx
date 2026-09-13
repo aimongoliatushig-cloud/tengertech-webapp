@@ -15,6 +15,11 @@ const activityLabels: Record<string,string> = { watering:"Усалгаа", pruni
 const activityStateLabels: Record<string,string> = { draft:"Ноорог", planned:"Төлөвлөсөн", assigned:"Оноогдсон", in_progress:"Хийгдэж буй", submitted:"Тайлан илгээсэн", under_review:"Хяналтад", returned:"Буцаагдсан", approved:"Баталгаажсан", done:"Дууссан", cancelled:"Цуцлагдсан" };
 const greenSections = ["Чингисийн өргөн чөлөө", "Б.Шаравын гудамж", "Эрчим хүчний гудамж", "Ажилчны гудамж"];
 function normalized(value:string) { return value.toLocaleLowerCase("mn-MN").replace(/[.\s-]/g, ""); }
+function locationSectionIndex(location:{name:string;code:string}) {
+  if (location.code.toLocaleUpperCase().startsWith("GL-")) return 0;
+  const name = normalized(location.name);
+  return greenSections.findIndex((section) => name.includes(normalized(section)) || normalized(section).includes(name));
+}
 function message(value?: string|string[]) { return Array.isArray(value) ? value[0] || "" : value || ""; }
 
 export default async function GreenRegistryPage({searchParams}:{searchParams?:Promise<{notice?:string|string[];error?:string|string[]}>}) {
@@ -32,14 +37,14 @@ export default async function GreenRegistryPage({searchParams}:{searchParams?:Pr
         <section className={styles.mapPanel}><div className={styles.tableHead}><h2>Ногоон байгууламжийн байршлын зураг</h2><span>Тэмдэглэгээ дээр дарж мэдээлэл харна</span></div><GreenRegistryMap locations={data.locations}/></section>
         <section className={styles.sectionGrid}>
           {greenSections.map((sectionName,index)=>{
-            const locations=data.locations.filter(x=>normalized(x.name).includes(normalized(sectionName))||normalized(sectionName).includes(normalized(x.name)));
+            const locations=data.locations.filter(x=>locationSectionIndex(x)===index);
             const ids=new Set(locations.map(x=>x.id));
             const assets=data.assets.filter(x=>x.locationId!==null&&ids.has(x.locationId));
             const activities=data.activities.filter(x=>x.locationId!==null&&ids.has(x.locationId));
             const area=locations.reduce((sum,x)=>sum+x.areaSize,0);
             return <details className={styles.streetSection} key={sectionName} open={index===0}><summary><span className={styles.sectionNumber}>{index+1}</span><span><b>{sectionName}</b><small>{area.toLocaleString("mn-MN")} м² · {assets.length} ургамлын бүртгэл · {activities.length} ажил</small></span></summary>
               <div className={styles.sectionBody}>
-                <div><h3>Ногоон байгууламжийн бүртгэл</h3>{assets.length?<div className={styles.compactList}>{assets.map(x=><div key={x.id}><span>{typeLabels[x.assetType]||x.assetType} — <b>{x.name}</b>{x.species?` / ${x.species}`:""}</span><strong>{x.quantity.toLocaleString("mn-MN")} {x.unit}</strong></div>)}</div>:<p className={styles.empty}>Одоогоор ургамлын бүртгэлгүй.</p>}</div>
+                <div><h3>Байршлын бүртгэл</h3>{locations.length?<div className={styles.compactList}>{locations.map(x=><div key={x.id}><span><b>{x.code||"Кодгүй"} · {x.name}</b><small>{x.khoroo||"Хороо оруулаагүй"}{x.latitude&&x.longitude?` · GPS: ${x.latitude}, ${x.longitude}`:""}</small></span><strong>{x.areaSize.toLocaleString("mn-MN")} {x.areaUnit}</strong></div>)}</div>:<p className={styles.empty}>Одоогоор байршлын бүртгэлгүй.</p>}{assets.length?<><h3>Ургамлын бүртгэл</h3><div className={styles.compactList}>{assets.map(x=><div key={x.id}><span>{typeLabels[x.assetType]||x.assetType} — <b>{x.name}</b>{x.species?` / ${x.species}`:""}</span><strong>{x.quantity.toLocaleString("mn-MN")} {x.unit}</strong></div>)}</div></>:null}</div>
                 <div><h3>Хийгдсэн ажлын байдал</h3>{activities.length?<div className={styles.compactList}>{activities.slice(0,20).map(x=><div key={x.id}><span><b>{x.name}</b><small>{activityLabels[x.activityType]||x.activityType} · {(x.doneDate||x.plannedDate).slice(0,10)||"Огноогүй"}</small></span><strong>{activityStateLabels[x.state]||x.state}</strong></div>)}</div>:<p className={styles.empty}>Одоогоор хийгдсэн ажлын бүртгэлгүй.</p>}</div>
               </div>
             </details>;
@@ -67,7 +72,6 @@ export default async function GreenRegistryPage({searchParams}:{searchParams?:Pr
             <label className={`${styles.field} ${styles.wide}`}><span>Тайлан, тайлбар</span><textarea name="reportNote"/></label><button className={styles.submit}>Хийгдсэн ажил хадгалах</button>
           </div></form>
         </section>
-        <section className={styles.tablePanel}><div className={styles.tableHead}><h2>Байршлын бүртгэл</h2><span>{data.locations.length} байршил</span></div><div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Код</th><th>Байршил</th><th>Хороо</th><th>Талбай</th><th>Хариуцсан</th><th>GPS</th></tr></thead><tbody>{data.locations.map(x=><tr key={x.id}><td>{x.code||"—"}</td><td><b>{x.name}</b><br/>{x.address}</td><td>{x.khoroo||"—"}</td><td>{x.areaSize.toLocaleString("mn-MN")} {x.areaUnit}</td><td>{x.responsibleEmployeeName||"—"}</td><td>{x.latitude&&x.longitude?`${x.latitude}, ${x.longitude}`:"—"}</td></tr>)}</tbody></table></div></section>
         <section className={styles.tablePanel}><div className={styles.tableHead}><h2>Ургамлын нэгдсэн тооллого</h2><span>{data.assets.length} бүртгэл</span></div><div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Байршил</th><th>Ангилал</th><th>Нэр / сорт</th><th>Тоо хэмжээ</th><th>Төлөв</th><th>Тарьсан огноо</th></tr></thead><tbody>{data.assets.map(x=><tr key={x.id}><td><b>{x.locationName}</b></td><td>{typeLabels[x.assetType]||x.assetType}</td><td>{x.name}{x.species?` / ${x.species}`:""}</td><td>{x.quantity.toLocaleString("mn-MN")} {x.unit}</td><td><span className={styles.pill}>{conditionLabels[x.condition]||x.condition}</span></td><td>{x.plantedDate||"—"}</td></tr>)}</tbody></table></div></section>
       </div>
     </div>
