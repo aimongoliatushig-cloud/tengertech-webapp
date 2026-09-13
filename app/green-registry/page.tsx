@@ -15,6 +15,7 @@ const conditionLabels: Record<string,string> = { healthy:"Хэвийн", needs_c
 const activityLabels: Record<string,string> = { watering:"Усалгаа", pruning:"Тайралт", care:"Арчилгаа", replanting:"Нөхөн тарилт", street_cleaning:"Цэвэрлэгээ", inspection:"Үзлэг", other:"Бусад" };
 const activityStateLabels: Record<string,string> = { draft:"Ноорог", planned:"Төлөвлөсөн", assigned:"Оноогдсон", in_progress:"Хийгдэж буй", submitted:"Тайлан илгээсэн", under_review:"Хяналтад", returned:"Буцаагдсан", approved:"Баталгаажсан", done:"Дууссан", cancelled:"Цуцлагдсан" };
 const greenSections = ["Чингисийн өргөн чөлөө", "Б.Шаравын гудамж", "Эрчим хүчний гудамж", "Ажилчны гудамж"];
+const locationGroups = ["grass", "tree", "flower", "bush", "other"];
 function normalized(value:string) { return value.toLocaleLowerCase("mn-MN").replace(/[.\s-]/g, ""); }
 function locationSectionIndex(location:{name:string;code:string}) {
   if (location.code.toLocaleUpperCase().startsWith("GL-")) return 0;
@@ -45,7 +46,16 @@ export default async function GreenRegistryPage({searchParams}:{searchParams?:Pr
             const area=locations.reduce((sum,x)=>sum+x.areaSize,0);
             return <details className={styles.streetSection} key={sectionName} open={index===0}><summary><span className={styles.sectionNumber}>{index+1}</span><span><b>{sectionName}</b><small>{area.toLocaleString("mn-MN")} м² · {assets.length} ургамлын бүртгэл · {activities.length} ажил</small></span></summary>
               <div className={styles.sectionBody}>
-                <div><h3>Байршлын бүртгэл</h3>{locations.length?<div className={styles.compactList}>{locations.map(x=><div key={x.id}><span><b>{x.code||"Кодгүй"} · {x.name}</b><small>{x.khoroo||"Хороо оруулаагүй"}{x.latitude&&x.longitude?` · GPS: ${x.latitude}, ${x.longitude}`:""}</small></span><span className={styles.locationActions}><strong>{x.areaSize.toLocaleString("mn-MN")} {x.areaUnit}</strong><Link href={`/green-registry/${x.id}`} className={styles.editLink}>Засах</Link></span></div>)}</div>:<p className={styles.empty}>Одоогоор байршлын бүртгэлгүй.</p>}{assets.length?<><h3>Ургамлын бүртгэл</h3><div className={styles.compactList}>{assets.map(x=><div key={x.id}><span>{typeLabels[x.assetType]||x.assetType} — <b>{x.name}</b>{x.species?` / ${x.species}`:""}</span><strong>{x.quantity.toLocaleString("mn-MN")} {x.unit}</strong></div>)}</div></>:null}</div>
+                <div className={styles.groupList}>{locationGroups.map(group=>{
+                  const groupLocations=locations.filter(x=>x.assetGroup===group);
+                  const groupIds=new Set(groupLocations.map(x=>x.id));
+                  const groupAssets=assets.filter(x=>x.locationId!==null&&groupIds.has(x.locationId));
+                  const groupArea=groupLocations.reduce((sum,x)=>sum+x.areaSize,0);
+                  return <details className={styles.assetGroup} key={group} open={group==="grass"&&groupLocations.length>0}><summary><b>{typeLabels[group]}</b><small>{groupLocations.length} байршил · {groupArea.toLocaleString("mn-MN")} м²</small></summary><div className={styles.assetGroupBody}>
+                    {groupLocations.length?<div className={styles.compactList}>{groupLocations.map(x=><div key={x.id}><span><b>{x.code||"Кодгүй"} · {x.name}</b><small>{x.khoroo||"Хороо оруулаагүй"}{x.latitude&&x.longitude?` · GPS: ${x.latitude}, ${x.longitude}`:""}</small></span><span className={styles.locationActions}><strong>{x.areaSize.toLocaleString("mn-MN")} {x.areaUnit}</strong><Link href={`/green-registry/${x.id}`} className={styles.editLink}>Засах</Link></span></div>)}</div>:<p className={styles.empty}>Энэ бүлэгт байршлын бүртгэлгүй.</p>}
+                    {groupAssets.length?<div className={styles.groupAssets}>{groupAssets.map(x=><div key={x.id}><span>{typeLabels[x.assetType]||x.assetType} — <b>{x.name}</b>{x.species?` / ${x.species}`:""}</span><strong>{x.quantity.toLocaleString("mn-MN")} {x.unit}</strong></div>)}</div>:null}
+                  </div></details>;
+                })}</div>
                 <div><h3>Хийгдсэн ажлын байдал</h3>{activities.length?<div className={styles.compactList}>{activities.slice(0,20).map(x=><div key={x.id}><span><b>{x.name}</b><small>{activityLabels[x.activityType]||x.activityType} · {(x.doneDate||x.plannedDate).slice(0,10)||"Огноогүй"}</small></span><strong>{activityStateLabels[x.state]||x.state}</strong></div>)}</div>:<p className={styles.empty}>Одоогоор хийгдсэн ажлын бүртгэлгүй.</p>}</div>
               </div>
             </details>;
@@ -54,7 +64,7 @@ export default async function GreenRegistryPage({searchParams}:{searchParams?:Pr
         <section className={styles.forms}>
           <form action={createGreenLocationAction} className={styles.panel}><h2>Байршил нэмэх</h2><p>Хариуцдаг ногоон байгууламжийн талбайг нэг удаа бүртгэнэ.</p><div className={styles.formGrid}>
             <label className={styles.field}><span>Байршлын нэр *</span><input name="name" required/></label><label className={styles.field}><span>Код</span><input name="code"/></label>
-            <label className={styles.field}><span>Төрөл</span><select name="locationType"><option value="park">Цэцэрлэгт хүрээлэн</option><option value="street">Зам дагуух ногоон зурвас</option><option value="square">Талбай</option><option value="yard">Байгууллагын орчин</option><option value="median">Тусгаарлах зурвас</option><option value="other">Бусад</option></select></label><label className={styles.field}><span>Хороо</span><input name="khoroo" placeholder="Ж: 15-р хороо"/></label>
+            <label className={styles.field}><span>Төрөл</span><select name="locationType"><option value="park">Цэцэрлэгт хүрээлэн</option><option value="street">Зам дагуух ногоон зурвас</option><option value="square">Талбай</option><option value="yard">Байгууллагын орчин</option><option value="median">Тусгаарлах зурвас</option><option value="other">Бусад</option></select></label><label className={styles.field}><span>Дэд бүлэг</span><select name="assetGroup" defaultValue="grass">{locationGroups.map(group=><option key={group} value={group}>{typeLabels[group]}</option>)}</select></label><label className={styles.field}><span>Хороо</span><input name="khoroo" placeholder="Ж: 15-р хороо"/></label>
             <label className={styles.field}><span>Талбай /м²/</span><input name="areaSize" type="number" min="0" step="0.01"/></label><label className={styles.field}><span>Хариуцсан ажилтан</span><select name="responsibleEmployeeId"><option value="">Сонгохгүй</option>{data.employees.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
             <label className={`${styles.field} ${styles.wide}`}><span>Хаяг</span><textarea name="address"/></label><div className={`${styles.field} ${styles.wide}`}><span>GPS байршил</span><GreenLocationPicker/></div><button className={styles.submit}>Байршил хадгалах</button>
           </div></form>

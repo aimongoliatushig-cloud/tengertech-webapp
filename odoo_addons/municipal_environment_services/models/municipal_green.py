@@ -40,6 +40,20 @@ class MunicipalGreenLocation(models.Model):
         required=True,
         tracking=True,
     )
+    asset_group = fields.Selection(
+        [
+            ("grass", "Зүлэг"),
+            ("tree", "Мод"),
+            ("flower", "Цэцэг"),
+            ("bush", "Бут сөөг"),
+            ("other", "Бусад"),
+        ],
+        string="Ногоон байгууламжийн бүлэг",
+        default="grass",
+        required=True,
+        index=True,
+        tracking=True,
+    )
     department_id = fields.Many2one("hr.department", string="Хэлтэс", required=True, index=True, tracking=True)
     responsible_employee_id = fields.Many2one("hr.employee", string="Хариуцсан ажилтан", tracking=True)
     district = fields.Char(string="Дүүрэг")

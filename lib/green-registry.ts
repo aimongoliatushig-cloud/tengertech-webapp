@@ -10,6 +10,7 @@ type LocationRecord = {
   name: string;
   code?: string | false;
   location_type?: string;
+  asset_group?: string;
   department_id?: Relation;
   responsible_employee_id?: Relation;
   district?: string | false;
@@ -55,6 +56,7 @@ export type GreenRegistryLocation = {
   name: string;
   code: string;
   locationType: string;
+  assetGroup: string;
   departmentName: string;
   responsibleEmployeeId: number | null;
   responsibleEmployeeName: string;
@@ -113,7 +115,7 @@ async function call<T>(session: AppSession, model: string, method: string, args:
 export async function loadGreenRegistry(session: AppSession) {
   const [locations, assets, activities, employees] = await Promise.all([
     call<LocationRecord[]>(session, "municipal.green.location", "search_read", [[]], {
-      fields: ["name", "code", "location_type", "department_id", "responsible_employee_id", "district", "khoroo", "address", "gps_latitude", "gps_longitude", "area_size", "area_unit", "active"],
+      fields: ["name", "code", "location_type", "asset_group", "department_id", "responsible_employee_id", "district", "khoroo", "address", "gps_latitude", "gps_longitude", "area_size", "area_unit", "active"],
       order: "khoroo asc, name asc",
     }),
     call<AssetRecord[]>(session, "municipal.green.asset", "search_read", [[]], {
@@ -132,7 +134,7 @@ export async function loadGreenRegistry(session: AppSession) {
 
   return {
     locations: locations.map((row): GreenRegistryLocation => ({
-      id: row.id, name: row.name, code: String(row.code || ""), locationType: row.location_type || "other",
+      id: row.id, name: row.name, code: String(row.code || ""), locationType: row.location_type || "other", assetGroup: row.asset_group || "grass",
       departmentName: row.department_id ? row.department_id[1] : "", responsibleEmployeeId: row.responsible_employee_id ? row.responsible_employee_id[0] : null,
       responsibleEmployeeName: row.responsible_employee_id ? row.responsible_employee_id[1] : "",
       district: String(row.district || ""), khoroo: String(row.khoroo || ""), address: String(row.address || ""),

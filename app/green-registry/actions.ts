@@ -26,6 +26,7 @@ export async function createGreenLocationAction(formData: FormData) {
   try {
     await createGreenLocation(session, {
       name, code: text(formData, "code") || false, location_type: text(formData, "locationType") || "other",
+      asset_group: text(formData, "assetGroup") || "grass",
       district: text(formData, "district") || "Хан-Уул", khoroo: text(formData, "khoroo") || false,
       address: text(formData, "address") || false, area_size: number(formData, "areaSize"), area_unit: "м²",
       gps_latitude: number(formData, "latitude"), gps_longitude: number(formData, "longitude"),
@@ -45,6 +46,7 @@ export async function updateGreenLocationAction(formData: FormData) {
       name,
       code: text(formData, "code") || false,
       location_type: text(formData, "locationType") || "other",
+      asset_group: text(formData, "assetGroup") || "grass",
       district: text(formData, "district") || "Хан-Уул",
       khoroo: text(formData, "khoroo") || false,
       address: text(formData, "address") || false,

@@ -8,6 +8,7 @@
                 <field name="name"/>
                 <field name="code"/>
                 <field name="location_type"/>
+                <field name="asset_group"/>
                 <field name="department_id"/>
                 <field name="responsible_employee_id"/>
                 <field name="district"/>
@@ -31,6 +32,7 @@
                         <group>
                             <field name="code"/>
                             <field name="location_type"/>
+                            <field name="asset_group"/>
                             <field name="department_id"/>
                             <field name="responsible_employee_id"/>
                             <field name="active"/>
@@ -94,12 +96,14 @@
                 <field name="name"/>
                 <field name="code"/>
                 <field name="department_id"/>
+                <field name="asset_group"/>
                 <field name="district"/>
                 <field name="khoroo"/>
                 <filter name="active" string="Идэвхтэй" domain="[('active', '=', True)]"/>
                 <group>
                     <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
                     <filter name="group_type" string="Байршлын төрөл" context="{'group_by': 'location_type'}"/>
+                    <filter name="group_asset" string="Ногоон байгууламжийн бүлэг" context="{'group_by': 'asset_group'}"/>
                     <filter name="group_district" string="Дүүрэг" context="{'group_by': 'district'}"/>
                 </group>
             </search>
