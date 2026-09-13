@@ -124,10 +124,12 @@ export async function loadGreenRegistry(session: AppSession, visitDate?: string)
       fields: ["name", "location_id", "asset_type", "species", "quantity", "unit", "planted_date", "condition", "responsible_employee_id", "active"],
       order: "location_id asc, asset_type asc, name asc",
     }),
-    call<ActivityRecord[]>(session, "municipal.green.activity", "search_read", [[]], {
+    call<ActivityRecord[]>(session, "municipal.green.activity", "search_read", [[
+      ["location_id", "!=", false],
+    ]], {
       fields: ["name", "location_id", "activity_type", "planned_date", "done_datetime", "actual_quantity", "unit", "state", "report_note", "assigned_employee_id"],
       order: "planned_date desc, id desc",
-      limit: 500,
+      limit: 2000,
     }),
     call<Array<{ id: number; name: string }>>(session, "hr.employee", "search_read", [[["active", "=", true]]], {
       fields: ["name"], order: "name asc",
