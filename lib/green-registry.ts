@@ -114,7 +114,7 @@ async function call<T>(session: AppSession, model: string, method: string, args:
   }
 }
 
-export async function loadGreenRegistry(session: AppSession) {
+export async function loadGreenRegistry(session: AppSession, visitDate?: string) {
   const [locations, assets, activities, employees, vehicleVisits] = await Promise.all([
     call<LocationRecord[]>(session, "municipal.green.location", "search_read", [[]], {
       fields: ["name", "code", "location_type", "asset_group", "department_id", "responsible_employee_id", "district", "khoroo", "address", "gps_latitude", "gps_longitude", "area_size", "area_unit", "active"],
@@ -132,7 +132,7 @@ export async function loadGreenRegistry(session: AppSession) {
     call<Array<{ id: number; name: string }>>(session, "hr.employee", "search_read", [[["active", "=", true]]], {
       fields: ["name"], order: "name asc",
     }).catch(() => []),
-    call<VehicleVisitRecord[]>(session, "municipal.green.vehicle.visit", "search_read", [[]], {
+    call<VehicleVisitRecord[]>(session, "municipal.green.vehicle.visit", "search_read", [[visitDate ? ["visit_date","=",visitDate] : []]], {
       fields:["location_id","vehicle_plate","visit_date","entered_at","exited_at","closest_meters","sample_count"], order:"entered_at desc", limit:100,
     }).catch(() => []),
   ]);

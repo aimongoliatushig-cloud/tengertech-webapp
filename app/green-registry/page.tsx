@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MapPin, Truck } from "lucide-react";
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
@@ -23,11 +24,15 @@ function locationSectionIndex(location:{name:string;code:string}) {
   return greenSections.findIndex((section) => name.includes(normalized(section)) || normalized(section).includes(name));
 }
 function message(value?: string|string[]) { return Array.isArray(value) ? value[0] || "" : value || ""; }
+function today() { return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ulaanbaatar"}).format(new Date()); }
+function time(value:string) { return value ? value.slice(11,16) : "—"; }
 
-export default async function GreenRegistryPage({searchParams}:{searchParams?:Promise<{notice?:string|string[];error?:string|string[]}>}) {
+export default async function GreenRegistryPage({searchParams}:{searchParams?:Promise<{notice?:string|string[];error?:string|string[];date?:string|string[]}>}) {
   const session = await requireSession();
-  const params: {notice?: string|string[]; error?: string|string[]} = searchParams ? await searchParams : {};
-  const [data, departmentName] = await Promise.all([loadGreenRegistry(session), loadSessionDepartmentName(session)]);
+  const params: {notice?: string|string[]; error?: string|string[]; date?:string|string[]} = searchParams ? await searchParams : {};
+  const requestedDate=message(params.date)&&/^\d{4}-\d{2}-\d{2}$/.test(message(params.date))?message(params.date):today();
+  const [data, departmentName] = await Promise.all([loadGreenRegistry(session,requestedDate), loadSessionDepartmentName(session)]);
+  const vehicleGroups=Array.from(new Map(data.vehicleVisits.map(visit=>[visit.vehiclePlate,true])).keys()).map(plate=>({plate,visits:data.vehicleVisits.filter(visit=>visit.vehiclePlate===plate)}));
   const totals = data.assets.reduce((sum,row)=>{sum[row.assetType]=(sum[row.assetType]||0)+row.quantity;return sum;},{} as Record<string,number>);
   const totalArea = data.locations.reduce((sum,row)=>sum+row.areaSize,0);
   return <main className={shellStyles.shell}><div className={shellStyles.contentWithMenu}>
@@ -37,7 +42,7 @@ export default async function GreenRegistryPage({searchParams}:{searchParams?:Pr
         <section className={styles.stats}><article className={styles.stat}><b>{data.locations.length}</b><span>Байршил</span></article><article className={styles.stat}><b>{totalArea.toLocaleString("mn-MN")} м²</b><span>Нийт талбай</span></article><article className={styles.stat}><b>{(totals.tree||0).toLocaleString("mn-MN")}</b><span>Мод</span></article><article className={styles.stat}><b>{(totals.bush||0).toLocaleString("mn-MN")}</b><span>Бут сөөг</span></article><article className={styles.stat}><b>{(totals.grass||0).toLocaleString("mn-MN")} м²</b><span>Зүлэг</span></article></section>
         {message(params.notice)?<div className={styles.message}>{message(params.notice)}</div>:null}{message(params.error)?<div className={`${styles.message} ${styles.error}`}>{message(params.error)}</div>:null}
         <section className={styles.mapPanel}><div className={styles.tableHead}><h2>Ногоон байгууламжийн байршлын зураг</h2><span>Тэмдэглэгээ дээр дарж мэдээлэл харна</span></div><GreenRegistryMap locations={data.locations}/></section>
-        <section className={styles.visitPanel}><div className={styles.tableHead}><h2>Усалгааны машины GPS очилт</h2><span>20 метрийн бүс · 11-63УКН, 35-61УНД, 62-14УЕЕ, 62-15УНИ</span></div>{data.vehicleVisits.length?<div className={styles.visitList}>{data.vehicleVisits.map(visit=><div key={visit.id}><strong>{visit.vehiclePlate}</strong><span><b>{visit.locationName}</b><small>{visit.visitDate} · {visit.enteredAt.slice(11,16)}–{visit.exitedAt.slice(11,16)||"—"}</small></span><em>{Math.round(visit.closestMeters)} м</em></div>)}</div>:<p className={styles.visitEmpty}>Одоогоор ногоон байгууламжийн GPS бүсэд очсон бүртгэл алга.</p>}</section>
+        <section className={styles.routePanel}><header className={styles.routeHeader}><div><h2>Усалгааны машины GPS маршрут</h2><p>Gaiham GPS-ийн хөдөлгөөнийг ногоон байгууламжийн 20 метрийн бүстэй автоматаар тулгав.</p></div><form method="get"><label>Огноо<input name="date" type="date" defaultValue={requestedDate}/></label><button type="submit">Харах</button></form></header><div className={styles.routeMetrics}><article><Truck/><span>Хөдөлгөөнтэй машин</span><strong>{vehicleGroups.length}</strong><small>4 усалгааны машинаас</small></article><article><MapPin/><span>Нийт очилт</span><strong>{data.vehicleVisits.length}</strong><small>{requestedDate}</small></article></div><div className={styles.routeList}>{vehicleGroups.length?vehicleGroups.map(vehicle=><details key={vehicle.plate} className={styles.routeVehicle}><summary><span className={styles.routeIcon}><Truck/></span><div><h3>{vehicle.plate}</h3><small>Усалгааны машин · Gaiham GPS</small></div><dl><div><dt>Очсон байршил</dt><dd>{vehicle.visits.length}</dd></div><div><dt>Хөдөлгөөн</dt><dd>{time(vehicle.visits.at(-1)?.enteredAt||"")}–{time(vehicle.visits[0]?.exitedAt||"")}</dd></div></dl><em>Дэлгэрэнгүй</em></summary><ol>{vehicle.visits.slice().reverse().map((visit,index)=><li key={visit.id}><span>{index+1}</span><div><strong>{visit.locationName}</strong><small>{Math.round(visit.closestMeters)} метр дотор · GPS баталгаатай</small></div><time>{time(visit.enteredAt)}–{time(visit.exitedAt)}</time></li>)}</ol></details>):<p className={styles.visitEmpty}>Энэ өдөр ногоон байгууламжийн GPS бүсэд очсон бүртгэл алга.</p>}</div></section>
         <section className={styles.sectionGrid}>
           {greenSections.map((sectionName,index)=>{
             const locations=data.locations.filter(x=>locationSectionIndex(x)===index);
