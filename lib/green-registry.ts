@@ -51,6 +51,8 @@ type ActivityRecord = {
   assigned_employee_id?: Relation;
 };
 
+type VehicleVisitRecord = { id:number; location_id?:Relation; vehicle_plate:string; visit_date:string; entered_at:string; exited_at?:string|false; closest_meters?:number; sample_count?:number };
+
 export type GreenRegistryLocation = {
   id: number;
   name: string;
@@ -113,7 +115,7 @@ async function call<T>(session: AppSession, model: string, method: string, args:
 }
 
 export async function loadGreenRegistry(session: AppSession) {
-  const [locations, assets, activities, employees] = await Promise.all([
+  const [locations, assets, activities, employees, vehicleVisits] = await Promise.all([
     call<LocationRecord[]>(session, "municipal.green.location", "search_read", [[]], {
       fields: ["name", "code", "location_type", "asset_group", "department_id", "responsible_employee_id", "district", "khoroo", "address", "gps_latitude", "gps_longitude", "area_size", "area_unit", "active"],
       order: "khoroo asc, name asc",
@@ -129,6 +131,9 @@ export async function loadGreenRegistry(session: AppSession) {
     }),
     call<Array<{ id: number; name: string }>>(session, "hr.employee", "search_read", [[["active", "=", true]]], {
       fields: ["name"], order: "name asc",
+    }).catch(() => []),
+    call<VehicleVisitRecord[]>(session, "municipal.green.vehicle.visit", "search_read", [[]], {
+      fields:["location_id","vehicle_plate","visit_date","entered_at","exited_at","closest_meters","sample_count"], order:"entered_at desc", limit:100,
     }).catch(() => []),
   ]);
 
@@ -154,6 +159,7 @@ export async function loadGreenRegistry(session: AppSession) {
       reportNote: String(row.report_note || ""), assignedEmployeeName: row.assigned_employee_id ? row.assigned_employee_id[1] : "",
     })),
     employees,
+    vehicleVisits: vehicleVisits.map(row=>({ id:row.id, locationId:row.location_id?row.location_id[0]:null, locationName:row.location_id?row.location_id[1]:"", vehiclePlate:row.vehicle_plate, visitDate:row.visit_date, enteredAt:row.entered_at, exitedAt:String(row.exited_at||""), closestMeters:Number(row.closest_meters||0), sampleCount:Number(row.sample_count||0) })),
   };
 }
 

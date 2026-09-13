@@ -83,6 +83,23 @@ class MunicipalGreenLocation(models.Model):
     active = fields.Boolean(string="Идэвхтэй", default=True)
 
 
+class MunicipalGreenVehicleVisit(models.Model):
+    _name = "municipal.green.vehicle.visit"
+    _description = "Усалгааны машины ногоон байгууламжийн GPS очилт"
+    _order = "entered_at desc, id desc"
+
+    name = fields.Char(string="Бүртгэлийн нэр", required=True)
+    location_id = fields.Many2one("municipal.green.location", string="Байршил", required=True, ondelete="cascade", index=True)
+    vehicle_plate = fields.Char(string="Улсын дугаар", required=True, index=True)
+    tracker_id = fields.Integer(string="GPS төхөөрөмжийн ID")
+    visit_date = fields.Date(string="Огноо", required=True, index=True)
+    entered_at = fields.Datetime(string="Очсон цаг", required=True, index=True)
+    exited_at = fields.Datetime(string="Гарсан цаг")
+    closest_meters = fields.Float(string="Хамгийн ойртсон зай /м/")
+    sample_count = fields.Integer(string="GPS цэгийн тоо")
+    source = fields.Char(string="Эх сурвалж", default="Gaiham GPS")
+
+
 class MunicipalGreenAsset(models.Model):
     _name = "municipal.green.asset"
     _description = "Ногоон байгууламжийн ургамлын бүртгэл"
