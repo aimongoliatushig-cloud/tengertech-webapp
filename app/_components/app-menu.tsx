@@ -683,6 +683,16 @@ export function AppMenu({
               label: "Eco Road үзлэг",
               icon: MapPinned,
             },
+            ...(canOpenGreenRegistry
+              ? [
+                  {
+                    key: "green-registry" as const,
+                    href: "/green-registry",
+                    label: "Ногоон байгууламжийн мэдээллийн сан",
+                    icon: Leaf,
+                  },
+                ]
+              : []),
           ]
         : [];
       return {
@@ -873,7 +883,6 @@ export function AppMenu({
     ...hrItems,
     ...roleFocusedItems,
     ...departmentItems,
-    ...(canOpenGreenRegistry ? [{ key: "green-registry", href: "/green-registry", label: "Ногоон байгууламжийн сан", icon: Leaf }] : []),
     ...(canOpenAutoBase &&
     !hasNestedAutoBaseMenu &&
     !roleFocusedItems.some((item) => item.key === "auto-base-board")
@@ -1094,7 +1103,6 @@ export function AppMenu({
       ...(canShowHrMenu
         ? [hrMenuItem]
         : []),
-      ...(canOpenGreenRegistry ? [{ key: "green-registry", href: "/green-registry", label: "Ногоон байгууламжийн сан", icon: Leaf }] : []),
       {
         key: "projects",
         href: departmentItems[0]?.href ?? "/projects",
