@@ -85,6 +85,7 @@ type MenuKey =
   | "garbage-points-new"
   | "garbage-settings"
   | "cleaning-areas"
+  | "green-registry"
   | "settings"
   | "access-monitor"
   | "review"
@@ -541,6 +542,10 @@ export function AppMenu({
         flags.municipalManager ||
         flags.municipalDirector),
   );
+  const canOpenGreenRegistry = Boolean(
+    flags.greenEngineer || flags.greenMaster || flags.environmentManager ||
+    departmentScopeName?.toLocaleLowerCase("mn-MN").includes("ногоон байгууламж")
+  );
   const procurementWorkerMode = Boolean(
     workerMode &&
     showProcurement &&
@@ -866,6 +871,7 @@ export function AppMenu({
     ...hrItems,
     ...roleFocusedItems,
     ...departmentItems,
+    ...(canOpenGreenRegistry ? [{ key: "green-registry", href: "/green-registry", label: "Ногоон байгууламжийн сан", icon: Leaf }] : []),
     ...(canOpenAutoBase &&
     !hasNestedAutoBaseMenu &&
     !roleFocusedItems.some((item) => item.key === "auto-base-board")
@@ -1086,6 +1092,7 @@ export function AppMenu({
       ...(canShowHrMenu
         ? [hrMenuItem]
         : []),
+      ...(canOpenGreenRegistry ? [{ key: "green-registry", href: "/green-registry", label: "Ногоон байгууламжийн сан", icon: Leaf }] : []),
       {
         key: "projects",
         href: departmentItems[0]?.href ?? "/projects",

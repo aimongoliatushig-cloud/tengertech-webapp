@@ -1,0 +1,47 @@
+import { AppMenu } from "@/app/_components/app-menu";
+import { WorkspaceHeader } from "@/app/_components/workspace-header";
+import shellStyles from "@/app/workspace.module.css";
+import { getSessionRoleLabel, hasCapability, requireSession } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { loadGreenRegistry } from "@/lib/green-registry";
+import { createGreenAssetAction, createGreenLocationAction } from "./actions";
+import styles from "./green-registry.module.css";
+
+export const dynamic = "force-dynamic";
+const typeLabels: Record<string,string> = { tree:"Мод", bush:"Бут сөөг", grass:"Зүлэг", flower:"Цэцэг", other:"Бусад" };
+const conditionLabels: Record<string,string> = { healthy:"Хэвийн", needs_care:"Арчилгаа шаардлагатай", damaged:"Гэмтсэн", dead:"Хатсан", removed:"Устгасан" };
+function message(value?: string|string[]) { return Array.isArray(value) ? value[0] || "" : value || ""; }
+
+export default async function GreenRegistryPage({searchParams}:{searchParams?:Promise<{notice?:string|string[];error?:string|string[]}>}) {
+  const session = await requireSession();
+  const params: {notice?: string|string[]; error?: string|string[]} = searchParams ? await searchParams : {};
+  const [data, departmentName] = await Promise.all([loadGreenRegistry(session), loadSessionDepartmentName(session)]);
+  const totals = data.assets.reduce((sum,row)=>{sum[row.assetType]=(sum[row.assetType]||0)+row.quantity;return sum;},{} as Record<string,number>);
+  const totalArea = data.locations.reduce((sum,row)=>sum+row.areaSize,0);
+  return <main className={shellStyles.shell}><div className={shellStyles.contentWithMenu}>
+    <aside className={shellStyles.menuColumn}><AppMenu active="green-registry" canCreateProject={hasCapability(session,"create_projects")} canCreateTasks={hasCapability(session,"create_tasks")} canWriteReports={hasCapability(session,"write_workspace_reports")} userName={session.name} userRole={session.role} roleLabel={getSessionRoleLabel(session)} groupFlags={session.groupFlags} departmentScopeName={departmentName}/></aside>
+    <div className={shellStyles.pageContent}><WorkspaceHeader title="Ногоон байгууламжийн мэдээллийн сан" subtitle="Байршил, талбайн хэмжээ, мод бут сөөг болон ургамлын нэгдсэн тооллого" userName={session.name} roleLabel={getSessionRoleLabel(session)}/>
+      <div className={styles.page}>
+        <section className={styles.stats}><article className={styles.stat}><b>{data.locations.length}</b><span>Байршил</span></article><article className={styles.stat}><b>{totalArea.toLocaleString("mn-MN")} м²</b><span>Нийт талбай</span></article><article className={styles.stat}><b>{(totals.tree||0).toLocaleString("mn-MN")}</b><span>Мод</span></article><article className={styles.stat}><b>{(totals.bush||0).toLocaleString("mn-MN")}</b><span>Бут сөөг</span></article><article className={styles.stat}><b>{(totals.grass||0).toLocaleString("mn-MN")} м²</b><span>Зүлэг</span></article></section>
+        {message(params.notice)?<div className={styles.message}>{message(params.notice)}</div>:null}{message(params.error)?<div className={`${styles.message} ${styles.error}`}>{message(params.error)}</div>:null}
+        <section className={styles.forms}>
+          <form action={createGreenLocationAction} className={styles.panel}><h2>Байршил нэмэх</h2><p>Хариуцдаг ногоон байгууламжийн талбайг нэг удаа бүртгэнэ.</p><div className={styles.formGrid}>
+            <label className={styles.field}><span>Байршлын нэр *</span><input name="name" required/></label><label className={styles.field}><span>Код</span><input name="code"/></label>
+            <label className={styles.field}><span>Төрөл</span><select name="locationType"><option value="park">Цэцэрлэгт хүрээлэн</option><option value="street">Зам дагуух ногоон зурвас</option><option value="square">Талбай</option><option value="yard">Байгууллагын орчин</option><option value="median">Тусгаарлах зурвас</option><option value="other">Бусад</option></select></label><label className={styles.field}><span>Хороо</span><input name="khoroo" placeholder="Ж: 15-р хороо"/></label>
+            <label className={styles.field}><span>Талбай /м²/</span><input name="areaSize" type="number" min="0" step="0.01"/></label><label className={styles.field}><span>Хариуцсан ажилтан</span><select name="responsibleEmployeeId"><option value="">Сонгохгүй</option>{data.employees.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+            <label className={`${styles.field} ${styles.wide}`}><span>Хаяг</span><textarea name="address"/></label><label className={styles.field}><span>Өргөрөг</span><input name="latitude" type="number" step="0.0000001"/></label><label className={styles.field}><span>Уртраг</span><input name="longitude" type="number" step="0.0000001"/></label><button className={styles.submit}>Байршил хадгалах</button>
+          </div></form>
+          <form action={createGreenAssetAction} className={styles.panel}><h2>Ургамлын тооллого нэмэх</h2><p>Мод, бут сөөг, зүлэг, цэцгийг байршилтай холбоно.</p><div className={styles.formGrid}>
+            <label className={`${styles.field} ${styles.wide}`}><span>Байршил *</span><select name="locationId" required><option value="">Сонгох</option>{data.locations.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+            <label className={styles.field}><span>Ангилал *</span><select name="assetType"><option value="tree">Мод</option><option value="bush">Бут сөөг</option><option value="grass">Зүлэг</option><option value="flower">Цэцэг</option><option value="other">Бусад</option></select></label><label className={styles.field}><span>Нэр *</span><input name="name" required placeholder="Ж: Улиас"/></label>
+            <label className={styles.field}><span>Төрөл, сорт</span><input name="species"/></label><label className={styles.field}><span>Тоо хэмжээ *</span><input name="quantity" type="number" min="0.01" step="0.01" required/></label>
+            <label className={styles.field}><span>Нэгж</span><select name="unit"><option value="ш">ш</option><option value="м²">м²</option><option value="м">м</option></select></label><label className={styles.field}><span>Төлөв</span><select name="condition"><option value="healthy">Хэвийн</option><option value="needs_care">Арчилгаа шаардлагатай</option><option value="damaged">Гэмтсэн</option><option value="dead">Хатсан</option></select></label>
+            <label className={styles.field}><span>Тарьсан огноо</span><input name="plantedDate" type="date"/></label><label className={styles.field}><span>Хариуцсан ажилтан</span><select name="responsibleEmployeeId"><option value="">Сонгохгүй</option>{data.employees.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><button className={styles.submit}>Тооллого хадгалах</button>
+          </div></form>
+        </section>
+        <section className={styles.tablePanel}><div className={styles.tableHead}><h2>Байршлын бүртгэл</h2><span>{data.locations.length} байршил</span></div><div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Код</th><th>Байршил</th><th>Хороо</th><th>Талбай</th><th>Хариуцсан</th><th>GPS</th></tr></thead><tbody>{data.locations.map(x=><tr key={x.id}><td>{x.code||"—"}</td><td><b>{x.name}</b><br/>{x.address}</td><td>{x.khoroo||"—"}</td><td>{x.areaSize.toLocaleString("mn-MN")} {x.areaUnit}</td><td>{x.responsibleEmployeeName||"—"}</td><td>{x.latitude&&x.longitude?`${x.latitude}, ${x.longitude}`:"—"}</td></tr>)}</tbody></table></div></section>
+        <section className={styles.tablePanel}><div className={styles.tableHead}><h2>Ургамлын нэгдсэн тооллого</h2><span>{data.assets.length} бүртгэл</span></div><div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Байршил</th><th>Ангилал</th><th>Нэр / сорт</th><th>Тоо хэмжээ</th><th>Төлөв</th><th>Тарьсан огноо</th></tr></thead><tbody>{data.assets.map(x=><tr key={x.id}><td><b>{x.locationName}</b></td><td>{typeLabels[x.assetType]||x.assetType}</td><td>{x.name}{x.species?` / ${x.species}`:""}</td><td>{x.quantity.toLocaleString("mn-MN")} {x.unit}</td><td><span className={styles.pill}>{conditionLabels[x.condition]||x.condition}</span></td><td>{x.plantedDate||"—"}</td></tr>)}</tbody></table></div></section>
+      </div>
+    </div>
+  </div></main>;
+}
