@@ -5,6 +5,7 @@ import { getSessionRoleLabel, hasCapability, requireSession } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { loadGreenRegistry } from "@/lib/green-registry";
 import { createGreenActivityAction, createGreenAssetAction, createGreenLocationAction } from "./actions";
+import { GreenLocationPicker, GreenRegistryMap } from "./green-map";
 import styles from "./green-registry.module.css";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export default async function GreenRegistryPage({searchParams}:{searchParams?:Pr
       <div className={styles.page}>
         <section className={styles.stats}><article className={styles.stat}><b>{data.locations.length}</b><span>Байршил</span></article><article className={styles.stat}><b>{totalArea.toLocaleString("mn-MN")} м²</b><span>Нийт талбай</span></article><article className={styles.stat}><b>{(totals.tree||0).toLocaleString("mn-MN")}</b><span>Мод</span></article><article className={styles.stat}><b>{(totals.bush||0).toLocaleString("mn-MN")}</b><span>Бут сөөг</span></article><article className={styles.stat}><b>{(totals.grass||0).toLocaleString("mn-MN")} м²</b><span>Зүлэг</span></article></section>
         {message(params.notice)?<div className={styles.message}>{message(params.notice)}</div>:null}{message(params.error)?<div className={`${styles.message} ${styles.error}`}>{message(params.error)}</div>:null}
+        <section className={styles.mapPanel}><div className={styles.tableHead}><h2>Ногоон байгууламжийн байршлын зураг</h2><span>Тэмдэглэгээ дээр дарж мэдээлэл харна</span></div><GreenRegistryMap locations={data.locations}/></section>
         <section className={styles.sectionGrid}>
           {greenSections.map((sectionName,index)=>{
             const locations=data.locations.filter(x=>normalized(x.name).includes(normalized(sectionName))||normalized(sectionName).includes(normalized(x.name)));
@@ -48,7 +50,7 @@ export default async function GreenRegistryPage({searchParams}:{searchParams?:Pr
             <label className={styles.field}><span>Байршлын нэр *</span><input name="name" required/></label><label className={styles.field}><span>Код</span><input name="code"/></label>
             <label className={styles.field}><span>Төрөл</span><select name="locationType"><option value="park">Цэцэрлэгт хүрээлэн</option><option value="street">Зам дагуух ногоон зурвас</option><option value="square">Талбай</option><option value="yard">Байгууллагын орчин</option><option value="median">Тусгаарлах зурвас</option><option value="other">Бусад</option></select></label><label className={styles.field}><span>Хороо</span><input name="khoroo" placeholder="Ж: 15-р хороо"/></label>
             <label className={styles.field}><span>Талбай /м²/</span><input name="areaSize" type="number" min="0" step="0.01"/></label><label className={styles.field}><span>Хариуцсан ажилтан</span><select name="responsibleEmployeeId"><option value="">Сонгохгүй</option>{data.employees.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
-            <label className={`${styles.field} ${styles.wide}`}><span>Хаяг</span><textarea name="address"/></label><label className={styles.field}><span>Өргөрөг</span><input name="latitude" type="number" step="0.0000001"/></label><label className={styles.field}><span>Уртраг</span><input name="longitude" type="number" step="0.0000001"/></label><button className={styles.submit}>Байршил хадгалах</button>
+            <label className={`${styles.field} ${styles.wide}`}><span>Хаяг</span><textarea name="address"/></label><div className={`${styles.field} ${styles.wide}`}><span>GPS байршил</span><GreenLocationPicker/></div><button className={styles.submit}>Байршил хадгалах</button>
           </div></form>
           <form action={createGreenAssetAction} className={styles.panel}><h2>Ургамлын тооллого нэмэх</h2><p>Мод, бут сөөг, зүлэг, цэцгийг байршилтай холбоно.</p><div className={styles.formGrid}>
             <label className={`${styles.field} ${styles.wide}`}><span>Байршил *</span><select name="locationId" required><option value="">Сонгох</option>{data.locations.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
