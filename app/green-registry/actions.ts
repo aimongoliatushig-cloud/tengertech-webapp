@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
-import { createGreenActivity, createGreenAsset, createGreenLocation, updateGreenLocation } from "@/lib/green-registry";
+import { createGreenActivity, createGreenAsset, createGreenLocation, setGreenLocationAssetQuantity, updateGreenLocation } from "@/lib/green-registry";
 
 function text(form: FormData, key: string) { return String(form.get(key) || "").trim(); }
+function hasValue(form: FormData, key: string) { return String(form.get(key) ?? "").trim() !== ""; }
 function number(form: FormData, key: string) { const value = Number(form.get(key)); return Number.isFinite(value) ? value : 0; }
 function positiveId(form: FormData, key: string) { const value = Number(form.get(key)); return Number.isFinite(value) && value > 0 ? value : false; }
 function dateTime(form: FormData, key: string) {
@@ -24,7 +25,7 @@ export async function createGreenLocationAction(formData: FormData) {
   const name = text(formData, "name");
   if (!name) finish("Байршлын нэр оруулна уу.", true);
   try {
-    await createGreenLocation(session, {
+    const locationId = await createGreenLocation(session, {
       name, code: text(formData, "code") || false, location_type: text(formData, "locationType") || "other",
       asset_group: text(formData, "assetGroup") || "grass",
       district: text(formData, "district") || "Хан-Уул", khoroo: text(formData, "khoroo") || false,
@@ -32,6 +33,10 @@ export async function createGreenLocationAction(formData: FormData) {
       gps_latitude: number(formData, "latitude"), gps_longitude: number(formData, "longitude"),
       responsible_employee_id: positiveId(formData, "responsibleEmployeeId"), active: true,
     });
+    const itemCount = number(formData, "itemCount");
+    if (hasValue(formData, "itemCount") && itemCount >= 0) {
+      await setGreenLocationAssetQuantity(session, locationId, text(formData, "assetGroup") || "grass", itemCount);
+    }
     finish("Ногоон байгууламжийн байршил нэмэгдлээ.");
   } catch (error) { finish(error instanceof Error ? error.message : "Байршил хадгалахад алдаа гарлаа.", true); }
 }
@@ -56,6 +61,10 @@ export async function updateGreenLocationAction(formData: FormData) {
       gps_longitude: number(formData, "longitude"),
       responsible_employee_id: positiveId(formData, "responsibleEmployeeId"),
     });
+    const itemCount = number(formData, "itemCount");
+    if (hasValue(formData, "itemCount") && itemCount >= 0) {
+      await setGreenLocationAssetQuantity(session, id, text(formData, "assetGroup") || "grass", itemCount);
+    }
   } catch (error) {
     redirect(`/green-registry/${id}?error=${encodeURIComponent(error instanceof Error ? error.message : "Байршил шинэчлэхэд алдаа гарлаа.")}`);
   }

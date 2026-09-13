@@ -177,6 +177,37 @@ export async function createGreenAsset(session: AppSession, values: Record<strin
   return call<number>(session, "municipal.green.asset", "create", [values]);
 }
 
+export async function setGreenLocationAssetQuantity(
+  session: AppSession,
+  locationId: number,
+  assetType: string,
+  quantity: number,
+) {
+  const existing = await call<Array<{ id: number }>>(
+    session,
+    "municipal.green.asset",
+    "search_read",
+    [[
+      ["location_id", "=", locationId],
+      ["asset_type", "=", assetType],
+      ["active", "=", true],
+    ]],
+    { fields: ["id"], order: "id asc", limit: 1 },
+  );
+  if (existing[0]?.id) {
+    return call<boolean>(session, "municipal.green.asset", "write", [[existing[0].id], { quantity, unit: "ш" }]);
+  }
+  return createGreenAsset(session, {
+    location_id: locationId,
+    name: assetType === "flower" ? "Цэцгийн мандал" : "Байршлын тооллого",
+    asset_type: assetType,
+    quantity,
+    unit: "ш",
+    condition: "healthy",
+    active: true,
+  });
+}
+
 export async function createGreenActivity(session: AppSession, values: Record<string, unknown>) {
   return call<number>(session, "municipal.green.activity", "create", [values]);
 }
