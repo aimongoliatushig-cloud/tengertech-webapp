@@ -18,6 +18,7 @@ const PUBLIC_PATHS = new Set([
   "/api/push/public-key",
   "/api/push/subscription",
   "/api/gaiham-fuel/import",
+  "/api/green-registry/gps-sync",
   "/api/wrs-report/import",
   "/api/wrs-report/normalized",
   "/api/ecoroad/import",
