@@ -56,7 +56,7 @@ export default async function GreenRegistryPage({searchParams}:{searchParams?:Pr
             const sectionLocations=data.locations.filter(x=>locationSectionIndex(x)===index);
             const streetTotal=sectionLocations.find(isStreetTotal);
             const locations=sectionLocations.filter(x=>!isStreetTotal(x));
-            const ids=new Set(locations.map(x=>x.id));
+            const ids=new Set(sectionLocations.map(x=>x.id));
             const assets=data.assets.filter(x=>x.locationId!==null&&ids.has(x.locationId));
             const activities=data.activities.filter(x=>x.locationId!==null&&ids.has(x.locationId));
             const area=streetTotal?.areaSize??locations.reduce((sum,x)=>sum+x.areaSize,0);
