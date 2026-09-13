@@ -91,13 +91,24 @@ if (!doneStage) throw new Error("Дууссан төлөвийн шат олдс
 
 let created = 0;
 let updated = 0;
-for (const [code, workName, activityType, quantity, unit, note] of works) {
+const existingImportedTasks = await call("project.task", "search_read", [[
+  ["project_id", "=", projectId], ["name", "ilike", "Ногоон байгууламж · А/186 · 2026.08 ·"],
+]], { fields: ["name"], limit: 200 });
+const incompleteMigrationTaskIds = existingImportedTasks
+  .filter((task) => !task.name.includes("· №"))
+  .map((task) => task.id);
+if (incompleteMigrationTaskIds.length) {
+  await call("project.task", "unlink", [incompleteMigrationTaskIds]);
+}
+
+for (const [index, [code, workName, activityType, quantity, unit, note]] of works.entries()) {
   const locationRows = await call("municipal.green.location", "search_read", [[["code", "=", code]]], {
     fields: ["name", "khoroo"], limit: 1,
   });
   if (!locationRows.length) throw new Error(`Байршил олдсонгүй: ${code}`);
   const location = locationRows[0];
-  const name = `Ногоон байгууламж · А/186 · 2026.08 · ${workName} · ${location.name}`;
+  const sequence = String(index + 1).padStart(2, "0");
+  const name = `Ногоон байгууламж · А/186 · 2026.08 · №${sequence} · ${workName} · ${location.name}`;
   const taskIds = await call("project.task", "search", [[
     ["project_id", "=", projectId], ["name", "=", name],
   ]], { limit: 1 });
