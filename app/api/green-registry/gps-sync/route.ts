@@ -20,7 +20,7 @@ function distance(point:GaihamTrackPoint, location:Location) {
 function today() { return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Ulaanbaatar"}).format(new Date()); }
 function authorized(request:NextRequest) {
   const token=process.env.GAIHAM_SYNC_TOKEN?.trim()||process.env.WRS_SYNC_TOKEN?.trim();
-  return Boolean(token&&request.headers.get("authorization")===`Bearer ${token}`);
+  return Boolean(token&&(request.headers.get("authorization")===`Bearer ${token}`||request.headers.get("x-sync-token")===token));
 }
 
 export async function POST(request:NextRequest) {
