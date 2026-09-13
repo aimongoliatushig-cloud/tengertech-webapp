@@ -4,11 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
-import { createGreenAsset, createGreenLocation } from "@/lib/green-registry";
+import { createGreenActivity, createGreenAsset, createGreenLocation } from "@/lib/green-registry";
 
 function text(form: FormData, key: string) { return String(form.get(key) || "").trim(); }
 function number(form: FormData, key: string) { const value = Number(form.get(key)); return Number.isFinite(value) ? value : 0; }
 function positiveId(form: FormData, key: string) { const value = Number(form.get(key)); return Number.isFinite(value) && value > 0 ? value : false; }
+function dateTime(form: FormData, key: string) {
+  const value = text(form, key);
+  return value ? `${value.replace("T", " ")}${value.length === 16 ? ":00" : ""}` : false;
+}
 
 function finish(message: string, error = false): never {
   revalidatePath("/green-registry");
@@ -45,4 +49,27 @@ export async function createGreenAssetAction(formData: FormData) {
     });
     finish("Ургамлын тооллогын бүртгэл нэмэгдлээ.");
   } catch (error) { finish(error instanceof Error ? error.message : "Ургамлын бүртгэл хадгалахад алдаа гарлаа.", true); }
+}
+
+export async function createGreenActivityAction(formData: FormData) {
+  const session = await requireSession();
+  const locationId = positiveId(formData, "locationId");
+  const name = text(formData, "name");
+  if (!locationId || !name) finish("Байршил болон ажлын нэрийг оруулна уу.", true);
+  try {
+    await createGreenActivity(session, {
+      location_id: locationId,
+      name,
+      activity_type: text(formData, "activityType") || "care",
+      planned_date: dateTime(formData, "performedDate"),
+      done_datetime: dateTime(formData, "performedDate"),
+      actual_quantity: number(formData, "actualQuantity"),
+      unit: text(formData, "unit") || false,
+      report_note: text(formData, "reportNote") || false,
+      assigned_employee_id: positiveId(formData, "assignedEmployeeId"),
+      requires_photo: false,
+      state: "done",
+    });
+    finish("Хийгдсэн ажлын бүртгэл нэмэгдлээ.");
+  } catch (error) { finish(error instanceof Error ? error.message : "Ажлын гүйцэтгэл хадгалахад алдаа гарлаа.", true); }
 }

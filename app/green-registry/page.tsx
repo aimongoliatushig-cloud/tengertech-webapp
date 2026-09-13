@@ -4,12 +4,16 @@ import shellStyles from "@/app/workspace.module.css";
 import { getSessionRoleLabel, hasCapability, requireSession } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { loadGreenRegistry } from "@/lib/green-registry";
-import { createGreenAssetAction, createGreenLocationAction } from "./actions";
+import { createGreenActivityAction, createGreenAssetAction, createGreenLocationAction } from "./actions";
 import styles from "./green-registry.module.css";
 
 export const dynamic = "force-dynamic";
 const typeLabels: Record<string,string> = { tree:"Мод", bush:"Бут сөөг", grass:"Зүлэг", flower:"Цэцэг", other:"Бусад" };
 const conditionLabels: Record<string,string> = { healthy:"Хэвийн", needs_care:"Арчилгаа шаардлагатай", damaged:"Гэмтсэн", dead:"Хатсан", removed:"Устгасан" };
+const activityLabels: Record<string,string> = { watering:"Усалгаа", pruning:"Тайралт", care:"Арчилгаа", replanting:"Нөхөн тарилт", street_cleaning:"Цэвэрлэгээ", inspection:"Үзлэг", other:"Бусад" };
+const activityStateLabels: Record<string,string> = { draft:"Ноорог", planned:"Төлөвлөсөн", assigned:"Оноогдсон", in_progress:"Хийгдэж буй", submitted:"Тайлан илгээсэн", under_review:"Хяналтад", returned:"Буцаагдсан", approved:"Баталгаажсан", done:"Дууссан", cancelled:"Цуцлагдсан" };
+const greenSections = ["Чингисийн өргөн чөлөө", "Б.Шаравын гудамж", "Эрчим хүчний гудамж", "Ажилчны гудамж"];
+function normalized(value:string) { return value.toLocaleLowerCase("mn-MN").replace(/[.\s-]/g, ""); }
 function message(value?: string|string[]) { return Array.isArray(value) ? value[0] || "" : value || ""; }
 
 export default async function GreenRegistryPage({searchParams}:{searchParams?:Promise<{notice?:string|string[];error?:string|string[]}>}) {
@@ -24,6 +28,21 @@ export default async function GreenRegistryPage({searchParams}:{searchParams?:Pr
       <div className={styles.page}>
         <section className={styles.stats}><article className={styles.stat}><b>{data.locations.length}</b><span>Байршил</span></article><article className={styles.stat}><b>{totalArea.toLocaleString("mn-MN")} м²</b><span>Нийт талбай</span></article><article className={styles.stat}><b>{(totals.tree||0).toLocaleString("mn-MN")}</b><span>Мод</span></article><article className={styles.stat}><b>{(totals.bush||0).toLocaleString("mn-MN")}</b><span>Бут сөөг</span></article><article className={styles.stat}><b>{(totals.grass||0).toLocaleString("mn-MN")} м²</b><span>Зүлэг</span></article></section>
         {message(params.notice)?<div className={styles.message}>{message(params.notice)}</div>:null}{message(params.error)?<div className={`${styles.message} ${styles.error}`}>{message(params.error)}</div>:null}
+        <section className={styles.sectionGrid}>
+          {greenSections.map((sectionName,index)=>{
+            const locations=data.locations.filter(x=>normalized(x.name).includes(normalized(sectionName))||normalized(sectionName).includes(normalized(x.name)));
+            const ids=new Set(locations.map(x=>x.id));
+            const assets=data.assets.filter(x=>x.locationId!==null&&ids.has(x.locationId));
+            const activities=data.activities.filter(x=>x.locationId!==null&&ids.has(x.locationId));
+            const area=locations.reduce((sum,x)=>sum+x.areaSize,0);
+            return <details className={styles.streetSection} key={sectionName} open={index===0}><summary><span className={styles.sectionNumber}>{index+1}</span><span><b>{sectionName}</b><small>{area.toLocaleString("mn-MN")} м² · {assets.length} ургамлын бүртгэл · {activities.length} ажил</small></span></summary>
+              <div className={styles.sectionBody}>
+                <div><h3>Ногоон байгууламжийн бүртгэл</h3>{assets.length?<div className={styles.compactList}>{assets.map(x=><div key={x.id}><span>{typeLabels[x.assetType]||x.assetType} — <b>{x.name}</b>{x.species?` / ${x.species}`:""}</span><strong>{x.quantity.toLocaleString("mn-MN")} {x.unit}</strong></div>)}</div>:<p className={styles.empty}>Одоогоор ургамлын бүртгэлгүй.</p>}</div>
+                <div><h3>Хийгдсэн ажлын байдал</h3>{activities.length?<div className={styles.compactList}>{activities.slice(0,20).map(x=><div key={x.id}><span><b>{x.name}</b><small>{activityLabels[x.activityType]||x.activityType} · {(x.doneDate||x.plannedDate).slice(0,10)||"Огноогүй"}</small></span><strong>{activityStateLabels[x.state]||x.state}</strong></div>)}</div>:<p className={styles.empty}>Одоогоор хийгдсэн ажлын бүртгэлгүй.</p>}</div>
+              </div>
+            </details>;
+          })}
+        </section>
         <section className={styles.forms}>
           <form action={createGreenLocationAction} className={styles.panel}><h2>Байршил нэмэх</h2><p>Хариуцдаг ногоон байгууламжийн талбайг нэг удаа бүртгэнэ.</p><div className={styles.formGrid}>
             <label className={styles.field}><span>Байршлын нэр *</span><input name="name" required/></label><label className={styles.field}><span>Код</span><input name="code"/></label>
@@ -37,6 +56,13 @@ export default async function GreenRegistryPage({searchParams}:{searchParams?:Pr
             <label className={styles.field}><span>Төрөл, сорт</span><input name="species"/></label><label className={styles.field}><span>Тоо хэмжээ *</span><input name="quantity" type="number" min="0.01" step="0.01" required/></label>
             <label className={styles.field}><span>Нэгж</span><select name="unit"><option value="ш">ш</option><option value="м²">м²</option><option value="м">м</option></select></label><label className={styles.field}><span>Төлөв</span><select name="condition"><option value="healthy">Хэвийн</option><option value="needs_care">Арчилгаа шаардлагатай</option><option value="damaged">Гэмтсэн</option><option value="dead">Хатсан</option></select></label>
             <label className={styles.field}><span>Тарьсан огноо</span><input name="plantedDate" type="date"/></label><label className={styles.field}><span>Хариуцсан ажилтан</span><select name="responsibleEmployeeId"><option value="">Сонгохгүй</option>{data.employees.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><button className={styles.submit}>Тооллого хадгалах</button>
+          </div></form>
+          <form action={createGreenActivityAction} className={styles.panel}><h2>Хийгдсэн ажил бүртгэх</h2><p>Дөрвөн хэсгийн аль нэг байршилд хийсэн ажлын гүйцэтгэлийг хадгална.</p><div className={styles.formGrid}>
+            <label className={`${styles.field} ${styles.wide}`}><span>Байршил *</span><select name="locationId" required><option value="">Сонгох</option>{data.locations.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+            <label className={styles.field}><span>Ажлын төрөл</span><select name="activityType"><option value="watering">Усалгаа</option><option value="pruning">Тайралт</option><option value="care">Арчилгаа</option><option value="replanting">Нөхөн тарилт</option><option value="street_cleaning">Цэвэрлэгээ</option><option value="inspection">Үзлэг</option><option value="other">Бусад</option></select></label>
+            <label className={styles.field}><span>Ажлын нэр *</span><input name="name" required/></label><label className={styles.field}><span>Хийгдсэн огноо</span><input name="performedDate" type="datetime-local"/></label><label className={styles.field}><span>Гүйцэтгэсэн хэмжээ</span><input name="actualQuantity" type="number" min="0" step="0.01"/></label>
+            <label className={styles.field}><span>Нэгж</span><select name="unit"><option value="м²">м²</option><option value="ш">ш</option><option value="м">м</option><option value="удаа">удаа</option></select></label><label className={styles.field}><span>Гүйцэтгэсэн ажилтан</span><select name="assignedEmployeeId"><option value="">Сонгохгүй</option>{data.employees.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+            <label className={`${styles.field} ${styles.wide}`}><span>Тайлан, тайлбар</span><textarea name="reportNote"/></label><button className={styles.submit}>Хийгдсэн ажил хадгалах</button>
           </div></form>
         </section>
         <section className={styles.tablePanel}><div className={styles.tableHead}><h2>Байршлын бүртгэл</h2><span>{data.locations.length} байршил</span></div><div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Код</th><th>Байршил</th><th>Хороо</th><th>Талбай</th><th>Хариуцсан</th><th>GPS</th></tr></thead><tbody>{data.locations.map(x=><tr key={x.id}><td>{x.code||"—"}</td><td><b>{x.name}</b><br/>{x.address}</td><td>{x.khoroo||"—"}</td><td>{x.areaSize.toLocaleString("mn-MN")} {x.areaUnit}</td><td>{x.responsibleEmployeeName||"—"}</td><td>{x.latitude&&x.longitude?`${x.latitude}, ${x.longitude}`:"—"}</td></tr>)}</tbody></table></div></section>

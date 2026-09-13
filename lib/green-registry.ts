@@ -36,6 +36,20 @@ type AssetRecord = {
   active?: boolean;
 };
 
+type ActivityRecord = {
+  id: number;
+  name: string;
+  location_id?: Relation;
+  activity_type?: string;
+  planned_date?: string | false;
+  done_datetime?: string | false;
+  actual_quantity?: number;
+  unit?: string | false;
+  state?: string;
+  report_note?: string | false;
+  assigned_employee_id?: Relation;
+};
+
 export type GreenRegistryLocation = {
   id: number;
   name: string;
@@ -67,6 +81,21 @@ export type GreenRegistryAsset = {
   responsibleEmployeeName: string;
 };
 
+export type GreenRegistryActivity = {
+  id: number;
+  name: string;
+  locationId: number | null;
+  locationName: string;
+  activityType: string;
+  plannedDate: string;
+  doneDate: string;
+  actualQuantity: number;
+  unit: string;
+  state: string;
+  reportNote: string;
+  assignedEmployeeName: string;
+};
+
 function connection(session: AppSession) {
   return { login: session.login, password: session.password };
 }
@@ -81,7 +110,7 @@ async function call<T>(session: AppSession, model: string, method: string, args:
 }
 
 export async function loadGreenRegistry(session: AppSession) {
-  const [locations, assets, employees] = await Promise.all([
+  const [locations, assets, activities, employees] = await Promise.all([
     call<LocationRecord[]>(session, "municipal.green.location", "search_read", [[]], {
       fields: ["name", "code", "location_type", "department_id", "responsible_employee_id", "district", "khoroo", "address", "gps_latitude", "gps_longitude", "area_size", "area_unit", "active"],
       order: "khoroo asc, name asc",
@@ -89,6 +118,11 @@ export async function loadGreenRegistry(session: AppSession) {
     call<AssetRecord[]>(session, "municipal.green.asset", "search_read", [[]], {
       fields: ["name", "location_id", "asset_type", "species", "quantity", "unit", "planted_date", "condition", "responsible_employee_id", "active"],
       order: "location_id asc, asset_type asc, name asc",
+    }),
+    call<ActivityRecord[]>(session, "municipal.green.activity", "search_read", [[]], {
+      fields: ["name", "location_id", "activity_type", "planned_date", "done_datetime", "actual_quantity", "unit", "state", "report_note", "assigned_employee_id"],
+      order: "planned_date desc, id desc",
+      limit: 500,
     }),
     call<Array<{ id: number; name: string }>>(session, "hr.employee", "search_read", [[["active", "=", true]]], {
       fields: ["name"], order: "name asc",
@@ -108,6 +142,13 @@ export async function loadGreenRegistry(session: AppSession) {
       assetType: row.asset_type || "other", species: String(row.species || ""), quantity: Number(row.quantity || 0), unit: String(row.unit || "ш"),
       plantedDate: String(row.planted_date || ""), condition: row.condition || "healthy", responsibleEmployeeName: row.responsible_employee_id ? row.responsible_employee_id[1] : "",
     })),
+    activities: activities.map((row): GreenRegistryActivity => ({
+      id: row.id, name: row.name, locationId: row.location_id ? row.location_id[0] : null,
+      locationName: row.location_id ? row.location_id[1] : "", activityType: row.activity_type || "other",
+      plannedDate: String(row.planned_date || ""), doneDate: String(row.done_datetime || ""),
+      actualQuantity: Number(row.actual_quantity || 0), unit: String(row.unit || ""), state: row.state || "draft",
+      reportNote: String(row.report_note || ""), assignedEmployeeName: row.assigned_employee_id ? row.assigned_employee_id[1] : "",
+    })),
     employees,
   };
 }
@@ -120,4 +161,8 @@ export async function createGreenLocation(session: AppSession, values: Record<st
 
 export async function createGreenAsset(session: AppSession, values: Record<string, unknown>) {
   return call<number>(session, "municipal.green.asset", "create", [values]);
+}
+
+export async function createGreenActivity(session: AppSession, values: Record<string, unknown>) {
+  return call<number>(session, "municipal.green.activity", "create", [values]);
 }
