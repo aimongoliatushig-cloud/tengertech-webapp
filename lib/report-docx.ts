@@ -32,6 +32,12 @@ export type ReportItem = {
   images?: { base64: string; mimetype: string }[];
 };
 
+export type ReportSummaryTable = {
+  caption: string;
+  headers: string[];
+  rows: (string | number)[][];
+};
+
 // Танай жишиг тайлангийн дагуу — албан хэв маяг (лого, Arial).
 const FONT = "Arial";
 const BRAND = "1F7A3F";
@@ -154,9 +160,40 @@ function centered(text: string, size: number, bold = true, spacingAfter = 40): P
   });
 }
 
+function borderedCell(value: string | number, bold = false): TableCell {
+  const border = { style: BorderStyle.SINGLE, size: 4, color: "A7B5AB" };
+  return new TableCell({
+    borders: { top: border, bottom: border, left: border, right: border },
+    margins: { top: 70, bottom: 70, left: 90, right: 90 },
+    children: [
+      new Paragraph({
+        children: [new TextRun({ text: String(value ?? ""), bold, size: 20, font: FONT })],
+      }),
+    ],
+  });
+}
+
+function summaryTable(section: ReportSummaryTable): (Paragraph | Table)[] {
+  return [
+    new Paragraph({
+      spacing: { before: 220, after: 80 },
+      children: [new TextRun({ text: section.caption.toLocaleUpperCase("mn-MN"), bold: true, size: 22, font: FONT })],
+    }),
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({ children: section.headers.map((header) => borderedCell(header, true)) }),
+        ...section.rows.map((row) => new TableRow({ children: row.map((value) => borderedCell(value)) })),
+      ],
+    }),
+  ];
+}
+
 export async function buildReportDocx(opts: {
   title: string;
   intro?: string;
+  meta?: { label: string; value: string }[];
+  summaries?: ReportSummaryTable[];
   items: ReportItem[];
 }): Promise<Buffer> {
   const year = new Date().getFullYear();
@@ -192,6 +229,22 @@ export async function buildReportDocx(opts: {
         children: [new TextRun({ text: opts.intro, size: 24, font: FONT })],
       }),
     );
+  }
+
+  for (const item of opts.meta ?? []) {
+    body.push(
+      new Paragraph({
+        spacing: { after: 50 },
+        children: [
+          new TextRun({ text: `${item.label}: `, bold: true, size: 22, font: FONT }),
+          new TextRun({ text: item.value || "—", size: 22, font: FONT }),
+        ],
+      }),
+    );
+  }
+
+  for (const section of opts.summaries ?? []) {
+    body.push(...summaryTable(section));
   }
 
   // Тайлан бүр

@@ -63,6 +63,17 @@ type ExportPayload = {
   reviewQueue: ReviewRow[];
 };
 
+type DepartmentReportSummary = {
+  department: string;
+  reportCount: number;
+  completedCount: number;
+  reviewCount: number;
+  problemCount: number;
+  unfinishedCount: number;
+  overdueCount: number;
+  completionPercent: number;
+};
+
 const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const REPORT_STATUS_FILTER_KEYS = new Set(["progress", "review", "done", "problem"]);
 
@@ -165,10 +176,39 @@ function nl2br(value: string) {
 
 const REPORT_DOC_TITLE = "Ажлын гүйцэтгэлийн тайлан";
 
+function buildDepartmentSummaries(payload: ExportPayload): DepartmentReportSummary[] {
+  const names = new Set([
+    ...payload.reports.map((report) => report.departmentName || "Хэлтэсгүй"),
+    ...payload.tasks.map((task) => task.departmentName || "Хэлтэсгүй"),
+    ...payload.reviewQueue.map((item) => item.departmentName || "Хэлтэсгүй"),
+  ]);
+
+  return [...names]
+    .map((department) => {
+      const reports = payload.reports.filter((report) => (report.departmentName || "Хэлтэсгүй") === department);
+      const tasks = payload.tasks.filter((task) => (task.departmentName || "Хэлтэсгүй") === department);
+      const reviewItems = payload.reviewQueue.filter((item) => (item.departmentName || "Хэлтэсгүй") === department);
+      const completedCount = reports.filter((report) => report.stateBucket === "done").length;
+      const problemCount = reports.filter((report) => report.stateBucket === "problem").length;
+      return {
+        department,
+        reportCount: reports.length,
+        completedCount,
+        reviewCount: reviewItems.length,
+        problemCount,
+        unfinishedCount: tasks.length,
+        overdueCount: tasks.filter((task) => task.statusKey === "problem").length,
+        completionPercent: reports.length ? Math.round((completedCount / reports.length) * 100) : 0,
+      };
+    })
+    .sort((left, right) => left.department.localeCompare(right.department, "mn"));
+}
+
 function buildWorkReportDoc(payload: ExportPayload): {
   meta: { label: string; value: string }[];
   sections: XlsxSection[];
 } {
+  const departmentSummaries = buildDepartmentSummaries(payload);
   return {
     meta: [
       { label: "Хамрах хүрээ", value: payload.scope },
@@ -188,6 +228,22 @@ function buildWorkReportDoc(payload: ExportPayload): {
           ["Аудио бичлэг", payload.summary.audios],
         ],
         columnWidths: [34, 14],
+      },
+      {
+        caption: "Хэлтэс тус бүрийн гүйцэтгэл",
+        headers: ["№", "Хэлтэс", "Тайлан", "Дууссан", "Хяналт", "Асуудалтай", "Дуусаагүй", "Хэтэрсэн", "Гүйцэтгэл"],
+        rows: departmentSummaries.map((item, index) => [
+          index + 1,
+          item.department,
+          item.reportCount,
+          item.completedCount,
+          item.reviewCount,
+          item.problemCount,
+          item.unfinishedCount,
+          item.overdueCount,
+          `${item.completionPercent}%`,
+        ]),
+        columnWidths: [5, 30, 10, 10, 10, 11, 11, 10, 12],
       },
       {
         caption: "Ажлын тайлангийн дэлгэрэнгүй",
@@ -493,6 +549,16 @@ function toOfficialPdfHtml(
   logoDataUrl: string,
 ) {
   const year = new Date().getFullYear();
+  const departmentSummaries = buildDepartmentSummaries(payload);
+  const completedReports = payload.reports.filter((report) => report.stateBucket === "done").length;
+  const completionPercent = payload.reports.length
+    ? Math.round((completedReports / payload.reports.length) * 100)
+    : 0;
+  const departmentRows = departmentSummaries.map((item, index) => `<tr>
+    <td>${index + 1}</td><td>${escapeHtml(item.department)}</td><td>${item.reportCount}</td>
+    <td>${item.completedCount}</td><td>${item.reviewCount}</td><td>${item.problemCount}</td>
+    <td>${item.unfinishedCount}</td><td>${item.overdueCount}</td><td>${item.completionPercent}%</td>
+  </tr>`).join("");
   const sections = payload.reports
     .slice(0, 30)
     .map(
@@ -537,6 +603,14 @@ function toOfficialPdfHtml(
     .cover .place { margin: 2px 0; }
     .meta { margin: 14px 0; }
     .meta div { margin-bottom: 2px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin: 12px 0 16px; }
+    .summary-card { border: 1px solid #9bad9f; padding: 7px; text-align: center; break-inside: avoid; }
+    .summary-card span { display: block; font-size: 9pt; color: #455249; }
+    .summary-card strong { display: block; margin-top: 2px; font-size: 14pt; color: #155f32; }
+    .section-title { margin: 16px 0 6px; font-size: 12pt; text-align: center; }
+    table { width: 100%; border-collapse: collapse; margin: 6px 0 14px; font-size: 9pt; }
+    th, td { border: 1px solid #8f9b92; padding: 4px 5px; vertical-align: top; }
+    th { background: #e8f2ea; text-align: center; }
     .report { break-inside: avoid; margin-bottom: 14px; }
     .new-page { break-before: page; }
     .report-title { margin: 12px 0 8px; text-align: center; text-transform: uppercase; font-size: 12pt; font-weight: bold; }
@@ -569,7 +643,17 @@ function toOfficialPdfHtml(
   <div class="meta">
     <div><b>Хамрах хүрээ:</b> ${escapeHtml(payload.scope)}</div>
     <div><b>Тайлан гаргасан огноо:</b> ${escapeHtml(payload.generatedAt)}</div>
+    ${payload.note ? `<div><b>Дүгнэлт:</b> ${nl2br(payload.note)}</div>` : ""}
   </div>
+  <div class="summary-grid">
+    <div class="summary-card"><span>Нийт тайлан</span><strong>${payload.summary.reports}</strong></div>
+    <div class="summary-card"><span>Гүйцэтгэл</span><strong>${completionPercent}%</strong></div>
+    <div class="summary-card"><span>Хяналт хүлээж буй</span><strong>${payload.summary.reviewItems}</strong></div>
+    <div class="summary-card"><span>Дуусаагүй / хэтэрсэн</span><strong>${payload.summary.tasks} / ${payload.summary.overdueTasks}</strong></div>
+  </div>
+  <h2 class="section-title">ХЭЛТЭС ТУС БҮРИЙН ГҮЙЦЭТГЭЛ</h2>
+  <table><thead><tr><th>№</th><th>Хэлтэс</th><th>Тайлан</th><th>Дууссан</th><th>Хяналт</th><th>Асуудалтай</th><th>Дуусаагүй</th><th>Хэтэрсэн</th><th>Гүйцэтгэл</th></tr></thead>
+  <tbody>${departmentRows || '<tr><td colspan="9">Мэдээлэл алга.</td></tr>'}</tbody></table>
   ${sections || '<p class="muted">Тайлан олдсонгүй.</p>'}
   <section class="unfinished">
     <h2>ДУУСААГҮЙ АЖИЛ</h2>
@@ -1063,7 +1147,34 @@ export async function GET(request: Request) {
       })),
     );
     const intro = `Тус төв нь тайлант хугацаанд (${payload.scope}) нийт ${payload.reports.length} ажлын тайлан, ${payload.tasks.length} дуусаагүй ажлыг нэгтгэн дараах байдлаар тайлагнаж байна:`;
-    const buffer = await buildReportDocx({ title: REPORT_DOC_TITLE, intro, items });
+    const departmentSummaries = buildDepartmentSummaries(payload);
+    const completedReports = payload.reports.filter((report) => report.stateBucket === "done").length;
+    const completionPercent = payload.reports.length
+      ? Math.round((completedReports / payload.reports.length) * 100)
+      : 0;
+    const buffer = await buildReportDocx({
+      title: REPORT_DOC_TITLE,
+      intro,
+      meta: [
+        { label: "Хамрах хүрээ", value: payload.scope },
+        { label: "Тайлан гаргасан огноо", value: payload.generatedAt },
+        { label: "Нийт гүйцэтгэл", value: `${completionPercent}%` },
+        ...(payload.note ? [{ label: "Дүгнэлт", value: payload.note }] : []),
+      ],
+      summaries: [
+        {
+          caption: "Нэгдсэн үзүүлэлт",
+          headers: ["Нийт тайлан", "Дууссан", "Хяналт", "Дуусаагүй", "Хэтэрсэн", "Зураг"],
+          rows: [[payload.summary.reports, completedReports, payload.summary.reviewItems, payload.summary.tasks, payload.summary.overdueTasks, payload.summary.images]],
+        },
+        {
+          caption: "Хэлтэс тус бүрийн гүйцэтгэл",
+          headers: ["Хэлтэс", "Тайлан", "Дууссан", "Хяналт", "Асуудал", "Дуусаагүй", "Хэтэрсэн", "%"],
+          rows: departmentSummaries.map((item) => [item.department, item.reportCount, item.completedCount, item.reviewCount, item.problemCount, item.unfinishedCount, item.overdueCount, `${item.completionPercent}%`]),
+        },
+      ],
+      items,
+    });
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Disposition": `attachment; filename="ajliin-tailan-${dateKey}.docx"`,
