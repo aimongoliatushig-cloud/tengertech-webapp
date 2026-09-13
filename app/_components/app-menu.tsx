@@ -543,6 +543,8 @@ export function AppMenu({
         flags.municipalDirector),
   );
   const canOpenGreenRegistry = Boolean(
+    resolvedRole === "general_manager" ||
+    flags.municipalManager ||
     flags.greenEngineer || flags.greenMaster || flags.environmentManager ||
     departmentScopeName?.toLocaleLowerCase("mn-MN").includes("ногоон байгууламж")
   );
