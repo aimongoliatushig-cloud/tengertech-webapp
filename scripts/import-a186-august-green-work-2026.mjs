@@ -43,30 +43,114 @@ async function jsonRpc(service, method, args) {
 const uid = await jsonRpc("common", "authenticate", [connection.db, connection.login, connection.password, {}]);
 if (!uid) throw new Error("Odoo нэвтрэлт амжилтгүй.");
 const call = (model, method, args = [], kwargs = {}) => jsonRpc("object", "execute_kw", [connection.db, uid, connection.password, model, method, args, kwargs]);
-const activityFields = await call("municipal.green.activity", "fields_get", [], { attributes: ["type"] });
-const supported = (values) => Object.fromEntries(Object.entries(values).filter(([key]) => key in activityFields));
+const [projectFields, taskFields] = await Promise.all([
+  call("project.project", "fields_get", [], { attributes: ["type"] }),
+  call("project.task", "fields_get", [], { attributes: ["type"] }),
+]);
+const supported = (values, fields) => Object.fromEntries(
+  Object.entries(values).filter(([key, value]) => key in fields && value !== undefined),
+);
+
+const departmentIds = await call("hr.department", "search", [[
+  ["name", "ilike", "Ногоон байгууламж"],
+  ["name", "ilike", "цэвэрлэгээ үйлчилгээ"],
+]], { limit: 1 });
+if (!departmentIds.length) throw new Error("Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс олдсонгүй.");
+const departmentId = departmentIds[0];
+
+const projectName = "ХУД Засаг даргын 2026 оны А/186 захирамж (8 сарын тайлан)";
+let projectIds = await call("project.project", "search", [[
+  ["name", "=", projectName], ["ops_department_id", "=", departmentId],
+]], { limit: 1 });
+let projectCreated = false;
+if (!projectIds.length) {
+  const projectId = await call("project.project", "create", [supported({
+    name: projectName,
+    ops_department_id: departmentId,
+    mfo_operation_type: "green_maintenance",
+    privacy_visibility: "employees",
+    date_start: "2026-08-01",
+    date: "2026-08-31",
+    description: "2026 оны 8 дугаар сарын А/186 захирамжийн баталгаатай ногоон байгууламжийн ажлын гүйцэтгэл.",
+  }, projectFields)]);
+  projectIds = [projectId];
+  projectCreated = true;
+} else {
+  await call("project.project", "write", [projectIds, supported({
+    ops_department_id: departmentId,
+    mfo_operation_type: "green_maintenance",
+    date_start: "2026-08-01",
+    date: "2026-08-31",
+  }, projectFields)]);
+}
+const projectId = projectIds[0];
+
+const stages = await call("project.task.type", "search_read", [[]], {
+  fields: ["name", "fold"], order: "sequence asc, id asc", limit: 200,
+});
+const doneStage = stages.find((stage) => stage.fold) || stages.find((stage) => /дуус|done/i.test(stage.name));
+if (!doneStage) throw new Error("Дууссан төлөвийн шат олдсонгүй.");
 
 let created = 0;
 let updated = 0;
 for (const [code, workName, activityType, quantity, unit, note] of works) {
-  const locationIds = await call("municipal.green.location", "search", [[["code", "=", code]]], { limit: 1 });
-  if (!locationIds.length) throw new Error(`Байршил олдсонгүй: ${code}`);
-  const name = `А/186 · 2026.08 · ${workName}`;
-  const existing = await call("municipal.green.activity", "search", [[
-    ["location_id", "=", locationIds[0]], ["name", "=", name], ["actual_quantity", "=", quantity], ["unit", "=", unit],
+  const locationRows = await call("municipal.green.location", "search_read", [[["code", "=", code]]], {
+    fields: ["name", "khoroo"], limit: 1,
+  });
+  if (!locationRows.length) throw new Error(`Байршил олдсонгүй: ${code}`);
+  const location = locationRows[0];
+  const name = `А/186 · 2026.08 · ${workName} · ${location.name}`;
+  const taskIds = await call("project.task", "search", [[
+    ["project_id", "=", projectId], ["name", "=", name],
   ]], { limit: 1 });
   const values = supported({
-    location_id: locationIds[0], name, activity_type: activityType,
-    planned_date: "2026-08-31 23:59:00", done_datetime: "2026-08-31 23:59:00",
-    actual_quantity: quantity, unit, report_note: note, requires_photo: false, state: "done",
-  });
-  if (existing.length) {
-    await call("municipal.green.activity", "write", [existing, values]);
+    name,
+    project_id: projectId,
+    ops_department_id: departmentId,
+    mfo_operation_type: "green_maintenance",
+    mfo_state: "verified",
+    stage_id: doneStage.id,
+    date_deadline: "2026-08-31 23:59:00",
+    mfo_shift_date: "2026-08-31",
+    ops_planned_quantity: quantity,
+    ops_completed_quantity: quantity,
+    ops_measurement_unit: unit,
+    ops_measurement_unit_code: unit,
+    green_clean_work_kind: "one_time",
+    green_clean_scheduled_date: "2026-08-31",
+    green_clean_location_name: location.name,
+    green_clean_khoroo: location.khoroo || "",
+    description: `Байршлын код: ${code}\nАжлын ангилал: ${activityType}\nГүйцэтгэл: ${quantity} ${unit}\n${note}`,
+  }, taskFields);
+  if (taskIds.length) {
+    await call("project.task", "write", [taskIds, values]);
     updated++;
   } else {
-    await call("municipal.green.activity", "create", [values]);
+    await call("project.task", "create", [values]);
     created++;
   }
 }
 
-console.log(JSON.stringify({ ok: true, activities: { created, updated, total: works.length }, excluded: ["Улиас 151/158 ш зөрүүтэй", "Усны 50,443 хэмжээний нэгж тодорхойгүй"] }, null, 2));
+const importedTaskIds = await call("project.task", "search", [[
+  ["project_id", "=", projectId], ["name", "ilike", "А/186 · 2026.08 ·"],
+]]);
+if (importedTaskIds.length !== works.length) {
+  throw new Error(`Шилжилтийн шалгалт амжилтгүй: ${works.length}-оос ${importedTaskIds.length} даалгавар байна.`);
+}
+
+// project/task руу бүрэн, давхардалгүй шилжсэний дараа мэдээллийн сангийн
+// өмнөх буруу байршуулсан хуулбаруудыг арилгана.
+const oldActivityIds = await call("municipal.green.activity", "search", [[
+  ["name", "ilike", "А/186 · 2026.08 ·"],
+]]);
+if (oldActivityIds.length) {
+  await call("municipal.green.activity", "unlink", [oldActivityIds]);
+}
+
+console.log(JSON.stringify({
+  ok: true,
+  project: { id: projectId, created: projectCreated, name: projectName },
+  tasks: { created, updated, total: importedTaskIds.length },
+  removedGreenRegistryActivities: oldActivityIds.length,
+  excluded: ["Улиас 151/158 ш зөрүүтэй", "Усны 50,443 хэмжээний нэгж тодорхойгүй"],
+}, null, 2));
