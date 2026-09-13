@@ -67,7 +67,6 @@ if (!projectIds.length) {
   const projectId = await call("project.project", "create", [supported({
     name: projectName,
     ops_department_id: departmentId,
-    mfo_operation_type: "green_maintenance",
     privacy_visibility: "employees",
     date_start: "2026-08-01",
     date: "2026-08-31",
@@ -78,7 +77,6 @@ if (!projectIds.length) {
 } else {
   await call("project.project", "write", [projectIds, supported({
     ops_department_id: departmentId,
-    mfo_operation_type: "green_maintenance",
     date_start: "2026-08-01",
     date: "2026-08-31",
   }, projectFields)]);
@@ -99,7 +97,7 @@ for (const [code, workName, activityType, quantity, unit, note] of works) {
   });
   if (!locationRows.length) throw new Error(`Байршил олдсонгүй: ${code}`);
   const location = locationRows[0];
-  const name = `А/186 · 2026.08 · ${workName} · ${location.name}`;
+  const name = `Ногоон байгууламж · А/186 · 2026.08 · ${workName} · ${location.name}`;
   const taskIds = await call("project.task", "search", [[
     ["project_id", "=", projectId], ["name", "=", name],
   ]], { limit: 1 });
@@ -107,7 +105,6 @@ for (const [code, workName, activityType, quantity, unit, note] of works) {
     name,
     project_id: projectId,
     ops_department_id: departmentId,
-    mfo_operation_type: "green_maintenance",
     mfo_state: "verified",
     stage_id: doneStage.id,
     date_deadline: "2026-08-31 23:59:00",
@@ -132,7 +129,7 @@ for (const [code, workName, activityType, quantity, unit, note] of works) {
 }
 
 const importedTaskIds = await call("project.task", "search", [[
-  ["project_id", "=", projectId], ["name", "ilike", "А/186 · 2026.08 ·"],
+  ["project_id", "=", projectId], ["name", "ilike", "Ногоон байгууламж · А/186 · 2026.08 ·"],
 ]]);
 if (importedTaskIds.length !== works.length) {
   throw new Error(`Шилжилтийн шалгалт амжилтгүй: ${works.length}-оос ${importedTaskIds.length} даалгавар байна.`);
