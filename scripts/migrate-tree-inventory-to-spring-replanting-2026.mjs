@@ -40,7 +40,7 @@ let created = 0;
 let updated = 0;
 let deactivatedAssets = 0;
 for (const [code, treeName, quantity] of records) {
-  const locations = await call("municipal.green.location", "search", [["code", "=", code]], { limit: 1 });
+  const locations = await call("municipal.green.location", "search", [[["code", "=", code]]], { limit: 1 });
   if (!locations.length) throw new Error(`Байршил олдсонгүй: ${code}`);
   const locationId = locations[0];
   const activityName = `2026 оны хаврын нөхөн тарилт — ${treeName}`;
